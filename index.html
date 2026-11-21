@@ -127,8 +127,9 @@ html,body{background:#050505}
 .hub-title span{display:block;color:#792cff;-webkit-text-stroke:1.5px #16052c;text-shadow:4px 5px 0 #170d2a,0 0 20px #7b2cff88}
 .hub-coin{background:#0009;border:2px solid #ffc323;border-radius:14px;padding:8px 14px;font-size:clamp(16px,3vw,22px);white-space:nowrap}
 .hub-main{display:grid;grid-template-columns:1fr 1.1fr;gap:16px;align-items:stretch}
-.hub-loadout{display:grid;grid-template-columns:minmax(90px,38%) 1fr;gap:12px;align-items:center;border:2px solid #34313f;border-radius:20px;background:linear-gradient(145deg,#17151f,#08080c);padding:14px}
-.hub-art{height:clamp(110px,22vh,170px);display:grid;place-items:center}
+.hub-loadout{display:grid;grid-template-columns:minmax(130px,44%) 1fr;gap:12px;align-items:center;border:2px solid #34313f;border-radius:20px;background:linear-gradient(145deg,#17151f,#08080c);padding:14px}
+.hub-art{height:clamp(170px,38vh,300px);display:grid;place-items:center;position:relative;border-radius:14px;background:radial-gradient(ellipse at 50% 88%,color-mix(in srgb,var(--c,#8d4dff) 35%,transparent),transparent 68%)}
+.hub-art canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .hub-art svg{width:100%;height:100%;overflow:visible;filter:drop-shadow(0 0 10px var(--c,#8d4dff))}
 .hub-info{display:grid;gap:3px;text-align:left;font-weight:600;font-size:12px;line-height:1.35;color:#cfcfe0}
 .hub-info small{color:#9a96b0;letter-spacing:.18em;font-size:10px;margin-top:6px}
@@ -142,7 +143,7 @@ html,body{background:#050505}
 .hub-btn:active{transform:translateY(3px);border-bottom-width:5px}
 .hub-foot{text-align:center;font-size:12px;color:#9a96b0}
 @media(max-width:700px){.hub-main{grid-template-columns:1fr}}
-@media(orientation:landscape) and (max-height:540px){.hub{gap:8px;min-height:0}.hub-main{grid-template-columns:1fr 1.15fr;gap:10px}.hub-btn{padding:8px 14px;border-bottom-width:6px}.hub-btn small{display:none}.hub-art{height:min(30vh,120px)}.hub-btns{gap:8px}.hub-info span{font-size:11px}.hub-title{font-size:min(10vh,44px)}}
+@media(orientation:landscape) and (max-height:540px){.hub{gap:8px;min-height:0}.hub-main{grid-template-columns:1fr 1.15fr;gap:10px}.hub-btn{padding:8px 14px;border-bottom-width:6px}.hub-btn small{display:none}.hub-art{height:min(52vh,190px)}.hub-btns{gap:8px}.hub-info span{font-size:11px}.hub-title{font-size:min(10vh,44px)}}
 #vig{position:fixed;inset:0;pointer-events:none;z-index:25;box-shadow:inset 0 0 130px 40px rgba(255,30,40,.75);opacity:0}
 #vig.low{opacity:.5;animation:vlow 1.1s ease-in-out infinite}
 #vig.hit{animation:vhit .5s ease-out}
@@ -1107,7 +1108,7 @@ function openShop(){lobbyBusy=true;syncLock();G.joy.x=G.joy.z=0;renderShop();$('
 function renderLobby(){
  const w=currentWeapon(),sp=SPECIALS[abilityIdx()],su=SUPERS[selectedWeapon];
  $('hubCoin').textContent=SAVE.coins;
- $('hubArt').innerHTML=weaponSvg(selectedWeapon);$('hubArt').style.setProperty('--c',w.color);
+ if(!hubR)$('hubArt').innerHTML=weaponSvg(selectedWeapon);$('hubArt').style.setProperty('--c',w.color);
  $('hubW').textContent=w.name;$('hubS').textContent=su.name+' \u2014 '+su.desc;$('hubA').textContent=sp.name+' \u2014 '+sp.desc;
  $('hubCfg').textContent=(CFG.mode==='level'?'Level '+Math.min(CFG.level,SAVE.lvlDone+1):'Infinity')+' \u00b7 '+DIFF[CFG.diff].name+' \u00b7 ketuk untuk mengubah';
  $('hubFoot').textContent='Rekor wave: '+(SAVE.best||0)+' \u00b7 Level terbuka: '+Math.min(LEVEL_WAVES.length,SAVE.lvlDone+1)+'/'+LEVEL_WAVES.length;
@@ -1485,11 +1486,37 @@ function nameTag(){
  const vis=ntV.z<1&&ntV.z>-1&&cam.dist>1.85;ntag.style.display=vis?'block':'none';
  if(vis){ntag.style.left=((ntV.x*.5+.5)*innerWidth)+'px';ntag.style.top=((-ntV.y*.5+.5)*innerHeight)+'px'}
 }
+// ===== Lobi: karakter 3D memegang pedang (kanvas kecil dengan renderer sendiri) =====
+let hubR=null,hubW=0,hubH=0;
+const cam2=new THREE.PerspectiveCamera(32,1,.1,80);
+const hubPad=new THREE.Group();hubPad.visible=false;scene.add(hubPad);
+{const base=new THREE.Mesh(new THREE.CylinderGeometry(1.7,1.8,.14,36),new THREE.MeshLambertMaterial({color:'#1b1730'}));base.position.y=-.07;hubPad.add(base);
+ const ringM=new THREE.MeshBasicMaterial({color:'#8d4dff'}),ring=new THREE.Mesh(new THREE.RingGeometry(1.45,1.62,48),ringM);ring.rotation.x=-Math.PI/2;ring.position.y=.01;hubPad.add(ring);hubPad.userData.ringM=ringM}
+try{
+ const cv=document.createElement('canvas');hubR=new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+ hubR.setClearColor(0x000000,0);hubR.outputEncoding=THREE.sRGBEncoding;hubR.toneMapping=THREE.ACESFilmicToneMapping;hubR.toneMappingExposure=.95;
+ $('hubArt').appendChild(cv);
+}catch(e){hubR=null}   // tanpa WebGL: tetap memakai gambar 2D
+function hubPose(t){
+ if(G.phase!=='lobby'||!hubR)return;
+ const P=G.P,c=t%3.4;
+ P.ry=t*.6;P.moving=false;P.dashT=0;P.hurt=0;P.inv=0;P.jump=null;P.y=0;
+ if(c<.45){P.swing=.25*(1-c/.45);P.combo=1+(Math.floor(t/3.4)%3)}else P.swing=0;
+}
+function hubRender(){
+ if(G.phase!=='lobby'||!hubR)return;
+ const el=$('hubArt'),w=el.clientWidth|0,h=el.clientHeight|0;if(w<20||h<20)return;
+ if(w!==hubW||h!==hubH){hubW=w;hubH=h;hubR.setPixelRatio(Math.min(window.devicePixelRatio||1,2));hubR.setSize(w,h,false);cam2.aspect=w/h;cam2.updateProjectionMatrix()}
+ const P=G.P;cam2.position.set(P.x,1.55,P.z+6.6);cam2.lookAt(P.x,1.2,P.z);
+ hubPad.position.set(P.x,0,P.z);hubPad.userData.ringM.color.set(currentWeapon().color);hubPad.visible=true;
+ const bg=scene.background,fg=scene.fog;scene.background=null;scene.fog=null;
+ try{hubR.render(scene,cam2)}finally{scene.background=bg;scene.fog=fg;hubPad.visible=false}
+}
 // loop
 let last=performance.now();
 function loop(now){
  requestAnimationFrame(loop);const dt=(now-last)/1000;last=now;
- update(dt);camUpdate(Math.min(dt,.05));render(now/1000);pUpdate(Math.min(.05,dt));floatTexts();nameTag();if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera);
+ update(dt);camUpdate(Math.min(dt,.05));hubPose(now/1000);render(now/1000);pUpdate(Math.min(.05,dt));hubRender();floatTexts();nameTag();if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera);
 }
 requestAnimationFrame(loop);
 })();
