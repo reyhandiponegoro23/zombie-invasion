@@ -149,6 +149,17 @@ html,body{background:#050505}
 @keyframes vhit{0%{opacity:1}100%{opacity:0}}
 @keyframes vlow{0%,100%{opacity:.25}50%{opacity:.6}}
 .hub-side{display:grid;gap:8px;justify-items:end}
+
+/* --- Akun --- */
+#accP{z-index:80}
+#accP .card{text-align:left;max-height:94vh;overflow:auto}
+#accIn,#accOut{display:grid;gap:12px}
+#accP .big{width:100%}
+.ain{width:100%;padding:12px 14px;border-radius:12px;border:3px solid #111;background:#14121f;color:#fff;font:700 16px inherit;box-sizing:border-box}
+textarea.ain{resize:none;font:600 12px monospace}
+.amsg{min-height:18px;font-size:13px;font-weight:700;color:#ff8f8f}.amsg.ok{color:#8dffb0}
+.achk{display:flex;gap:8px;align-items:flex-start;font-size:12px;opacity:.9}
+.ntag{position:fixed;transform:translate(-50%,-100%);pointer-events:none;z-index:20;padding:2px 10px;border-radius:8px;background:#000a;color:#fff;font:800 13px inherit;white-space:nowrap;text-shadow:0 1px 0 #000}
 </style>
 </head>
 <body>
@@ -174,6 +185,7 @@ html,body{background:#050505}
 <div id="rotate">↻ Putar HP ke mode landscape agar lebih nyaman <button onclick="this.parentNode.remove()">✕</button></div>
 <div id="vig"></div>
 <div class="panel" id="menu"><div class="card">
+  <div style="display:flex;justify-content:flex-end"><button class="sm" id="accChip"></button></div>
   <div class="lobby-kicker">ARENA SURVIVAL</div>
   <h1>ZOMBIE<span>INVASION</span></h1>
   <div class="weapon-picker" aria-label="Pilih senjata">
@@ -188,11 +200,32 @@ html,body{background:#050505}
   <button class="big" id="go">MASUK KE LOBI&nbsp; →</button>
   <p class="hint">20–30 zombie tiap wave · Zombie lebih kuat · Musuh baru setiap 10 wave · Perempatan kota besar · Jeda 7 detik · WASD bergerak · Shift = Shift Lock · Klik kanan putar kamera · Klik kiri menyerang · Q dash · R special · E super</p>
 </div></div>
+<div class="panel" id="accP" style="display:none"><button class="pclose" id="accX" aria-label="Tutup">✕</button><div class="card">
+ <h1 id="accTitle">Akun</h1>
+ <div id="accIn">
+  <div class="seg" id="accTabs"><button class="on" data-t="login">Masuk</button><button data-t="new">Buat Akun</button></div>
+  <div><div class="sec">Nama pengguna</div><input class="ain" id="accName" maxlength="16" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="3–16 huruf, angka, atau _"></div>
+  <div><div class="sec">Kata sandi</div><input class="ain" id="accPw" type="password" maxlength="40" autocomplete="current-password" placeholder="minimal 4 karakter"></div>
+  <label class="achk" id="accMoveWrap"><input type="checkbox" id="accMove" checked><span>Pindahkan progres tamu (koin, pedang, level) ke akun baru ini</span></label>
+  <div class="amsg" id="accMsg"></div>
+  <button class="big" id="accGo">Masuk</button>
+  <button class="big alt" id="accGuest">Main sebagai tamu</button>
+  <p class="hint">Tanpa email. Akun tersimpan di perangkat ini. Pindah perangkat atau cadangan? Pakai Kode Simpan setelah masuk.</p>
+ </div>
+ <div id="accOut">
+  <p style="margin:0;font-size:18px">Masuk sebagai <b id="accWho"></b></p>
+  <button class="big" id="accCopy">Salin Kode Simpan</button>
+  <textarea class="ain" id="accCode" rows="3" placeholder="Tempel Kode Simpan di sini lalu tekan Impor"></textarea>
+  <button class="big alt" id="accImport">Impor Kode</button>
+  <div class="amsg" id="accMsg2"></div>
+  <button class="big alt" id="accOutBtn">Keluar / Ganti Akun</button>
+ </div>
+</div></div>
 <div class="panel" id="pause" style="display:none"><div class="card"><h1>Jeda</h1>
   <button class="big" id="resume">Lanjut</button><button class="big alt" id="sndPause"></button><button class="big alt" id="tomenu">Kembali ke Lobi</button></div></div>
 <div class="panel" id="upg" style="display:none"><div class="card"><h1>Bos kalah! Pilih peningkatan</h1><div id="uc"></div></div></div>
 <div class="panel" id="lobbyP" style="display:none"><div class="hub">
-  <div class="hub-top"><div class="hub-title">ZOMBIE<span>INVASION</span></div><div class="hub-side"><div class="hub-coin">🪙 <b id="hubCoin">0</b></div><button class="sm" id="sndHub"></button></div></div>
+  <div class="hub-top"><div class="hub-title">ZOMBIE<span>INVASION</span></div><div class="hub-side"><div class="hub-coin">🪙 <b id="hubCoin">0</b></div><button class="sm" id="sndHub"></button><button class="sm" id="accHub"></button></div></div>
   <div class="hub-main">
    <div class="hub-loadout"><div class="hub-art" id="hubArt"></div><div class="hub-info"><small>SENJATA</small><strong id="hubW"></strong><small>SUPER (E)</small><span id="hubS"></span><small>ABILITY (R)</small><span id="hubA"></span></div></div>
    <div class="hub-btns">
@@ -290,12 +323,18 @@ const WEAPONS={
 };
 let selectedCharacter='fighter',selectedWeapon='sword';
 const LX=400; // posisi lobi 3D (jauh dari arena)
-const PRICE={sword:0,dual:150,greatblade:300,energy:450,katana:200,flame:500,frost:700};
+const PRICE={sword:0,dual:600,katana:900,greatblade:1600,energy:2400,flame:3200,frost:4200};
 const DIFF={easy:{name:'Mudah',hp:.75,dm:.7,count:.75,coin:.7,sup:1},normal:{name:'Normal',hp:1,dm:1,count:1,coin:1,sup:.9},hard:{name:'Sulit',hp:1.35,dm:1.3,count:1.2,coin:1.5,sup:.8},nightmare:{name:'Neraka',hp:1.8,dm:1.7,count:1.4,coin:2.2,sup:.7}};
 // Bar super terisi jauh lebih lambat di semua mode (dulu +5 per pukulan); makin sulit makin lambat.
 const SUP_HIT=1.1,SUP_HURT=2.5;
-const LEVEL_WAVES=[5,6,7,8,10]; // tiap level pendek (5–10 wave), kesulitan naik lewat HP, damage, kecepatan, dan jenis zombie
-const SAVE_KEY='zi_save_v1';
+const LEVEL_WAVES=[5,6,7,8,9,10,10,10,10,10]; // tiap level pendek (5–10 wave), kesulitan naik lewat HP, damage, kecepatan, dan jenis zombie
+// ===== Akun tanpa email: nama pengguna + kata sandi, tersimpan di perangkat ini =====
+const ACC_KEY='zi_accounts_v1',CUR_KEY='zi_current_v1',GUEST_KEY='zi_save_v1';
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const PROFILE=lsGet(CUR_KEY)||'';            // '' = belum memilih, '@guest' = tamu, selain itu = kunci akun
+const isAcc=PROFILE!==''&&PROFILE!=='@guest';
+const SAVE_KEY=isAcc?'zi_save_v2_'+PROFILE:GUEST_KEY;
 const SAVE=(()=>{let d={};try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')}catch(e){}return Object.assign({coins:250,owned:['sword'],weapon:'sword',best:0,lvlDone:0,abOwned:['whirl'],ability:'whirl',cfg:{mode:'infinity',level:1,diff:'normal'}},d)})();
 const save=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE))}catch(e){}};
 if(!SAVE.snd||typeof SAVE.snd.mode!=='number')SAVE.snd={mode:0};
@@ -329,15 +368,15 @@ function groundSlam(P){pushFx(P.x,P.z,6,'#ff6b3d');pushFx(P.x,P.z,3.5,'#ffd23f')
 // ===== Special skill: diganti acak setelah bos =====
 const SPECIALS=[
  {id:'whirl',price:0,desc:'Tebasan melingkar di sekitarmu. Ability awal gratis.',name:'Pusaran Tebasan',cd:10,run(P){pushFx(P.x,P.z,4.5,'#ff9f1c');pushSlash(P.x,P.z,P.ry,3,1.5);G.shake=Math.max(G.shake,.6);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<4.5+ZDEF[z.type].scale*.4)hitZombie(z,25*P.dm*P.sd,9,P.x,P.z,.6)}},
- {id:'quake',price:200,desc:'Hentakan bumi: gelombang kejut luas dengan knockback besar.',name:'Hentak Bumi',cd:11,run(P){pushFx(P.x,P.z,7,'#c98b4b');pushFx(P.x,P.z,4,'#ffd23f');G.shake=Math.max(G.shake,1);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<7+ZDEF[z.type].scale*.4)hitZombie(z,18*P.dm*P.sd,12,P.x,P.z,1.2)}},
- {id:'wave',price:250,desc:'Gelombang tebasan melesat lurus menembus zombie di depan.',name:'Gelombang Pedang',cd:9,run(P){const fx=Math.sin(P.ry),fz=Math.cos(P.ry);pushSlash(P.x+fx*2,P.z+fz*2,P.ry,1,2.4);pushSlash(P.x+fx*5,P.z+fz*5,P.ry,2,2.4);G.shake=Math.max(G.shake,.6);for(const z of alive()){const dx=z.x-P.x,dz=z.z-P.z,f=dx*fx+dz*fz,sd=Math.abs(dx*fz-dz*fx);if(f>0&&f<13&&sd<2.2+ZDEF[z.type].scale*.4)hitZombie(z,34*P.dm*P.sd,8,P.x,P.z,.6)}}},
- {id:'storm',price:400,desc:'Petir menyambar 6 zombie terdekat.',name:'Storm',cd:10,run(P){alive().sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z)).slice(0,6).forEach(z=>{pushBolt(z.x,z.z);pushFx(z.x,z.z,3,'#fff27a');hitZombie(z,85*P.dm*P.sd,5,P.x,P.z,.9)});screenFlash();G.shake=Math.max(G.shake,.8)}},
- {id:'bladestorm',price:450,desc:'4 pusaran tebasan beruntun di sekelilingmu.',name:'Badai Pedang',cd:12,run(P){P.pulses=4;P.pulseT=0}},
- {id:'meteor',price:350,desc:'Hujan meteor menghantam 5 zombie terdekat: damage besar dan membuat mereka terbakar 3 detik.',name:'Hujan Meteor',cd:12,run(P){const m=P.dm*P.sd;alive().sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z)).slice(0,5).forEach(t=>{pushFx(t.x,t.z,4.2,'#ff7a2f');pushFx(t.x,t.z,2.4,'#ffd23f');for(const z of alive())if(Math.hypot(z.x-t.x,z.z-t.z)<3.6+ZDEF[z.type].scale*.4){hitZombie(z,48*m,6,t.x,t.z,.7);z.burn=3;z.burnT=.3;z.burnM=m}});G.shake=Math.max(G.shake,.9)}},
- {id:'blizzard',price:300,desc:'Badai es di sekitarmu: membekukan zombie 2,5 detik (bos 1,2 detik) dan memberi damage ringan.',name:'Badai Es',cd:13,run(P){const m=P.dm*P.sd;pushFx(P.x,P.z,9,'#7ad7ff');pushFx(P.x,P.z,5,'#ffffff');screenFlash();G.shake=Math.max(G.shake,.6);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<9+ZDEF[z.type].scale*.4){hitZombie(z,16*m,3,P.x,P.z,0,2);z.freeze=z.type==='boss'?1.2:2.5;z.wind=0}}},
- {id:'heal',price:350,desc:'Cahaya penyembuh: memulihkan 35% HP dan kebal selama 1,5 detik.',name:'Cahaya Penyembuh',cd:18,run(P){P.hp=Math.min(P.maxHp,P.hp+P.maxHp*.35);P.inv=Math.max(P.inv,1.5);pushFx(P.x,P.z,5,'#4dff88');pushFx(P.x,P.z,2.6,'#ffffff');pushText(P.x,2.6,P.z,'+'+Math.round(P.maxHp*.35),'#4dff88')}},
- {id:'blackhole',price:550,desc:'Lubang hitam menyedot semua zombie ke arahmu lalu meledakkan mereka dengan damage besar.',name:'Lubang Hitam',cd:14,run(P){const m=P.dm*P.sd;pushFx(P.x,P.z,12,'#7b2cff');pushFx(P.x,P.z,6,'#000000');G.shake=Math.max(G.shake,1);for(const z of alive()){const dx=P.x-z.x,dz=P.z-z.z,l=Math.hypot(dx,dz)||1;if(l<16){const k=(l-2.2)*.9*(1-ZDEF[z.type].kbRes*.6);z.vx+=dx/l*k*6;z.vz+=dz/l*k*6;hitZombie(z,60*m,0,P.x,P.z,.9)}}}},
- {id:'slam',price:500,desc:'Tahan tombol untuk membidik, lepas untuk melompat dan menghantam tanah.',name:'Ground Slam',cd:9,aim:true,run(P){groundSlam(P)}},
+ {id:'quake',price:800,desc:'Hentakan bumi: gelombang kejut luas dengan knockback besar.',name:'Hentak Bumi',cd:11,run(P){pushFx(P.x,P.z,7,'#c98b4b');pushFx(P.x,P.z,4,'#ffd23f');G.shake=Math.max(G.shake,1);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<7+ZDEF[z.type].scale*.4)hitZombie(z,18*P.dm*P.sd,12,P.x,P.z,1.2)}},
+ {id:'wave',price:1000,desc:'Gelombang tebasan melesat lurus menembus zombie di depan.',name:'Gelombang Pedang',cd:9,run(P){const fx=Math.sin(P.ry),fz=Math.cos(P.ry);pushSlash(P.x+fx*2,P.z+fz*2,P.ry,1,2.4);pushSlash(P.x+fx*5,P.z+fz*5,P.ry,2,2.4);G.shake=Math.max(G.shake,.6);for(const z of alive()){const dx=z.x-P.x,dz=z.z-P.z,f=dx*fx+dz*fz,sd=Math.abs(dx*fz-dz*fx);if(f>0&&f<13&&sd<2.2+ZDEF[z.type].scale*.4)hitZombie(z,34*P.dm*P.sd,8,P.x,P.z,.6)}}},
+ {id:'storm',price:1800,desc:'Petir menyambar 6 zombie terdekat.',name:'Storm',cd:10,run(P){alive().sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z)).slice(0,6).forEach(z=>{pushBolt(z.x,z.z);pushFx(z.x,z.z,3,'#fff27a');hitZombie(z,85*P.dm*P.sd,5,P.x,P.z,.9)});screenFlash();G.shake=Math.max(G.shake,.8)}},
+ {id:'bladestorm',price:2000,desc:'4 pusaran tebasan beruntun di sekelilingmu.',name:'Badai Pedang',cd:12,run(P){P.pulses=4;P.pulseT=0}},
+ {id:'meteor',price:1600,desc:'Hujan meteor menghantam 5 zombie terdekat: damage besar dan membuat mereka terbakar 3 detik.',name:'Hujan Meteor',cd:12,run(P){const m=P.dm*P.sd;alive().sort((a,b)=>Math.hypot(a.x-P.x,a.z-P.z)-Math.hypot(b.x-P.x,b.z-P.z)).slice(0,5).forEach(t=>{pushFx(t.x,t.z,4.2,'#ff7a2f');pushFx(t.x,t.z,2.4,'#ffd23f');for(const z of alive())if(Math.hypot(z.x-t.x,z.z-t.z)<3.6+ZDEF[z.type].scale*.4){hitZombie(z,48*m,6,t.x,t.z,.7);z.burn=3;z.burnT=.3;z.burnM=m}});G.shake=Math.max(G.shake,.9)}},
+ {id:'blizzard',price:1200,desc:'Badai es di sekitarmu: membekukan zombie 2,5 detik (bos 1,2 detik) dan memberi damage ringan.',name:'Badai Es',cd:13,run(P){const m=P.dm*P.sd;pushFx(P.x,P.z,9,'#7ad7ff');pushFx(P.x,P.z,5,'#ffffff');screenFlash();G.shake=Math.max(G.shake,.6);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<9+ZDEF[z.type].scale*.4){hitZombie(z,16*m,3,P.x,P.z,0,2);z.freeze=z.type==='boss'?1.2:2.5;z.wind=0}}},
+ {id:'heal',price:1400,desc:'Cahaya penyembuh: memulihkan 35% HP dan kebal selama 1,5 detik.',name:'Cahaya Penyembuh',cd:18,run(P){P.hp=Math.min(P.maxHp,P.hp+P.maxHp*.35);P.inv=Math.max(P.inv,1.5);pushFx(P.x,P.z,5,'#4dff88');pushFx(P.x,P.z,2.6,'#ffffff');pushText(P.x,2.6,P.z,'+'+Math.round(P.maxHp*.35),'#4dff88')}},
+ {id:'blackhole',price:3200,desc:'Lubang hitam menyedot semua zombie ke arahmu lalu meledakkan mereka dengan damage besar.',name:'Lubang Hitam',cd:14,run(P){const m=P.dm*P.sd;pushFx(P.x,P.z,12,'#7b2cff');pushFx(P.x,P.z,6,'#000000');G.shake=Math.max(G.shake,1);for(const z of alive()){const dx=P.x-z.x,dz=P.z-z.z,l=Math.hypot(dx,dz)||1;if(l<16){const k=(l-2.2)*.9*(1-ZDEF[z.type].kbRes*.6);z.vx+=dx/l*k*6;z.vz+=dz/l*k*6;hitZombie(z,60*m,0,P.x,P.z,.9)}}}},
+ {id:'slam',price:2400,desc:'Tahan tombol untuk membidik, lepas untuk melompat dan menghantam tanah.',name:'Ground Slam',cd:9,aim:true,run(P){groundSlam(P)}},
 ];
 // ===== Super: setiap pedang punya kekuatan super berbeda =====
 const pushBeam=(x,z,ry,len,w,color)=>{const b=G.beams.find(q=>!q.active)||G.beams[0];Object.assign(b,{active:true,x,z,ry,len,w,color,t:0})};
@@ -353,7 +392,7 @@ const SUPERS={
   for(let i=0;i<=8;i++)pushGhost(sx+(ex-sx)*i/8,sz+(ez-sz)*i/8,P.ry);
   pushSlash(sx,sz,P.ry,1,2.2);pushSlash(ex,ez,P.ry+Math.PI,2,2.2);pushFx(ex,ez,5,'#ff7ab8');P.x=ex;P.z=ez;P.inv=Math.max(P.inv,1);G.shake=.9;P.swing=.4;P.combo=3;
   for(const z of alive())if(Math.hypot(z.x-ex,z.z-ez)<4.5+ZDEF[z.type].scale*.4)hitZombie(z,40*m,8,ex,ez,.6,2)}},
- flame:{name:'Ledakan Api',desc:'Ledakan api membakar zombie di sekitar: damage awal + luka bakar 4 detik.',run(P){const m=P.dm*supM();P.inv=Math.max(P.inv,.8);pushFx(P.x,P.z,10,'#ff7a2f');pushFx(P.x,P.z,6,'#ffd23f');pushSlash(P.x,P.z,P.ry,3,3);G.shake=1.1;P.swing=.4;P.combo=3;for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<10+ZDEF[z.type].scale*.4){hitZombie(z,60*m,9,P.x,P.z,.7,2);z.burn=4;z.burnT=.2;z.burnM=m}}},
+ flame:{name:'Ledakan Api',desc:'Ledakan api membakar zombie di sekitar: damage awal + terbakar terus sampai mati.',run(P){const m=P.dm*supM();P.inv=Math.max(P.inv,.8);pushFx(P.x,P.z,10,'#ff7a2f');pushFx(P.x,P.z,6,'#ffd23f');pushSlash(P.x,P.z,P.ry,3,3);G.shake=1.1;P.swing=.4;P.combo=3;for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<10+ZDEF[z.type].scale*.4){hitZombie(z,60*m,9,P.x,P.z,.7,2);z.burn=1e9;z.burnT=.2;z.burnM=m}}},
  frost:{name:'Zona Beku',desc:'Gelombang es membekukan zombie di sekitar 3,5 detik (bos 1,8 detik).',run(P){const m=P.dm*supM();P.inv=Math.max(P.inv,.8);pushFx(P.x,P.z,13,'#7ad7ff');pushFx(P.x,P.z,8,'#ffffff');pushSlash(P.x,P.z,P.ry,3,3.4);screenFlash();G.shake=.9;P.swing=.4;P.combo=3;for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<13+ZDEF[z.type].scale*.4){hitZombie(z,50*m,3,P.x,P.z,0,2);z.freeze=z.type==='boss'?1.8:3.5;z.wind=0}}}
 };
 const pushBolt=(x,z)=>{const b=G.bolts.find(q=>!q.active)||G.bolts[0];Object.assign(b,{active:true,x,z,t:0,off:Array.from({length:8},()=>[(Math.random()-.5)*.9,(Math.random()-.5)*.9])})};
@@ -366,7 +405,7 @@ const PASSIVE={flame:'Tiap tebasan yang kena membakar zombie 3 detik.',frost:'Ti
 function weaponProc(z,P){
  hitBurstFx(z);
  if(z.dead)return;
- if(selectedWeapon==='flame'){z.burn=3;z.burnT=Math.min(z.burnT>0?z.burnT:.25,.25);z.burnM=P.dm*currentWeapon().damage}
+ if(selectedWeapon==='flame'){z.burn=Math.max(z.burn,3);z.burnT=Math.min(z.burnT>0?z.burnT:.25,.25);z.burnM=P.dm*currentWeapon().damage}
  else if(selectedWeapon==='frost'){
   if(z.type==='boss'){if(G.time-(z.frzAt===undefined?-99:z.frzAt)>4){z.frzAt=G.time;z.freeze=1.2;z.wind=0}}
   else{z.freeze=3;z.wind=0}
@@ -1225,6 +1264,7 @@ addEventListener('mousemove',e=>{
  }
 });
 addEventListener('keydown',e=>{
+ if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;
  if(e.code==='Space')e.preventDefault();if(e.repeat)return;G.keys[e.code]=true;
  if(e.code==='ShiftLeft'||e.code==='ShiftRight'){if(G.phase==='play')setShiftLock(!cam.shiftLock)}
  if(e.code==='KeyQ')G.req.dash=true;if(e.code==='KeyR'){G.req.special=true;G.spHeld=true}if(e.code==='KeyE'){if(G.phase==='lobby')doAct();else G.req.super=true}
@@ -1349,7 +1389,7 @@ const AU=(()=>{
 })();
 $('sndHub').onclick=AU.cycle;$('sndPause').onclick=AU.cycle;
 document.addEventListener('pointerdown',e=>{AU.unlock();if(e.target&&e.target.closest&&e.target.closest('button'))AU.play('ui')},true);
-addEventListener('keydown',e=>{AU.unlock();if(e.code==='KeyM')AU.cycle()});
+addEventListener('keydown',e=>{AU.unlock();if(e.target&&(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA'))return;if(e.code==='KeyM')AU.cycle()});
 // efek layar: kilat merah saat terkena, vinyet berdenyut saat HP rendah
 const vig=$('vig');
 function vigHit(){vig.classList.remove('hit');void vig.offsetWidth;vig.classList.add('hit');setTimeout(()=>vig.classList.remove('hit'),520)}
@@ -1377,11 +1417,79 @@ const weaponIdx=()=>Object.keys(WEAPONS).indexOf(selectedWeapon);
   if(!b.cl&&G.cleared)AU.play('clear');
   vig.classList.toggle('low',Q.hp/Q.maxHp<.3&&Q.hp>0);
   return r}}
+// ===== Akun: daftar / masuk / keluar / Kode Simpan =====
+const accList=()=>{try{return JSON.parse(lsGet(ACC_KEY)||'{}')||{}}catch(e){return{}}};
+const accName=()=>isAcc?((accList()[PROFILE]||{}).name||PROFILE):'Tamu';
+async function hashPw(pw,salt){
+ try{if(window.crypto&&crypto.subtle){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(salt+':'+pw));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}}catch(e){}
+ let h=2166136261;const t=salt+':'+pw;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619)}return'f'+(h>>>0).toString(16);
+}
+let accTab='login',accForced=false;
+function accSetTab(t){accTab=t;[...$('accTabs').querySelectorAll('button')].forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+ $('accGo').textContent=t==='login'?'Masuk':'Buat Akun';$('accPw').autocomplete=t==='login'?'current-password':'new-password';
+ $('accMoveWrap').style.display=(t==='new'&&lsGet(GUEST_KEY))?'flex':'none';$('accMsg').textContent='';$('accMsg').className='amsg'}
+const accMsg=(id,t,ok)=>{const e=$(id);e.textContent=t;e.className='amsg'+(ok?' ok':'')};
+function openAcc(forced){
+ accForced=!!forced;$('accP').style.display='grid';$('accX').style.display=forced?'none':'block';
+ $('accIn').style.display=isAcc?'none':'grid';$('accOut').style.display=isAcc?'grid':'none';
+ $('accTitle').textContent=isAcc?'Akun':'Masuk ke Akun';
+ if(isAcc)$('accWho').textContent=accName();else{accSetTab('login');$('accGuest').textContent=PROFILE==='@guest'?'Tetap sebagai tamu':'Main sebagai tamu';$('accName').value='';$('accPw').value=''}
+ $('accCode').value='';accMsg('accMsg2','');
+}
+function closeAcc(){if(!accForced||PROFILE)$('accP').style.display='none'}
+async function accSubmit(){
+ const raw=$('accName').value.trim(),pw=$('accPw').value,key=raw.toLowerCase(),L=accList();
+ if(!/^[A-Za-z0-9_]{3,16}$/.test(raw))return accMsg('accMsg','Nama pengguna harus 3–16 karakter: huruf, angka, atau _');
+ if(pw.length<4)return accMsg('accMsg','Kata sandi minimal 4 karakter');
+ if(accTab==='new'){
+  if(L[key])return accMsg('accMsg','Nama itu sudah dipakai di perangkat ini');
+  const salt=Math.random().toString(36).slice(2,10);
+  L[key]={name:raw,salt,hash:await hashPw(pw,salt),created:Date.now()};lsSet(ACC_KEY,JSON.stringify(L));
+  if($('accMove').checked&&lsGet(GUEST_KEY))lsSet('zi_save_v2_'+key,lsGet(GUEST_KEY));
+ }else{
+  const a=L[key];if(!a||a.hash!==await hashPw(pw,a.salt))return accMsg('accMsg','Nama pengguna atau kata sandi salah');
+ }
+ lsSet(CUR_KEY,key);accMsg('accMsg','Berhasil! Memuat...',true);setTimeout(()=>location.reload(),250);
+}
+function saveCode(){const j=JSON.stringify({coins:SAVE.coins,owned:SAVE.owned,weapon:SAVE.weapon,best:SAVE.best,lvlDone:SAVE.lvlDone,abOwned:SAVE.abOwned,ability:SAVE.ability,snd:SAVE.snd});return'ZI1.'+btoa(unescape(encodeURIComponent(j)))}
+function importCode(code){
+ try{
+  if(!code.startsWith('ZI1.'))throw 0;const d=JSON.parse(decodeURIComponent(escape(atob(code.slice(4)))));
+  const num=(v,max)=>Math.max(0,Math.min(max,Math.floor(+v||0)));
+  SAVE.coins=num(d.coins,1e9);SAVE.best=num(d.best,1e6);SAVE.lvlDone=num(d.lvlDone,LEVEL_WAVES.length);
+  SAVE.owned=Array.from(new Set(['sword',...(d.owned||[]).filter(x=>WEAPONS[x])]));SAVE.weapon=SAVE.owned.includes(d.weapon)?d.weapon:'sword';
+  SAVE.abOwned=Array.from(new Set(['whirl',...(d.abOwned||[]).filter(x=>SPECIALS.some(sp=>sp.id===x))]));SAVE.ability=SAVE.abOwned.includes(d.ability)?d.ability:'whirl';
+  if(d.snd&&typeof d.snd.mode==='number')SAVE.snd={mode:num(d.snd.mode,2)};
+  save();return true;
+ }catch(e){return false}
+}
+async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){const a=$('accCode');a.value=t;a.select();try{return document.execCommand('copy')}catch(e2){return false}}}
+$('accTabs').addEventListener('click',e=>{const b=e.target.closest('button');if(b)accSetTab(b.dataset.t)});
+$('accGo').onclick=accSubmit;
+$('accPw').addEventListener('keydown',e=>{if(e.key==='Enter')accSubmit()});
+$('accGuest').onclick=()=>{if(PROFILE==='@guest'){closeAcc();return}if(isAcc)return;lsSet(CUR_KEY,'@guest');location.reload()};
+$('accX').onclick=closeAcc;
+$('accOutBtn').onclick=()=>{lsSet(CUR_KEY,'');location.reload()};
+$('accCopy').onclick=async()=>{const ok=await copyText(saveCode());accMsg('accMsg2',ok?'Kode Simpan disalin! Simpan di tempat aman.':'Salin manual dari kotak di bawah.',ok);if(!ok)$('accCode').value=saveCode()};
+$('accImport').onclick=()=>{if(importCode($('accCode').value.trim())){accMsg('accMsg2','Berhasil diimpor! Memuat...',true);setTimeout(()=>location.reload(),300)}else accMsg('accMsg2','Kode tidak valid')};
+$('accHub').onclick=()=>openAcc(false);$('accChip').onclick=()=>openAcc(false);
+{const lbl='👤 '+accName()+(isAcc?'':' · buat akun');$('accHub').textContent=lbl;$('accChip').textContent=lbl}
+if(!PROFILE)openAcc(true);
+// papan nama di atas karakter (seperti Roblox)
+const ntag=document.createElement('div');ntag.className='ntag';ntag.style.display='none';document.body.appendChild(ntag);ntag.textContent=accName();
+const ntV=new THREE.Vector3();
+function nameTag(){
+ const on=G.phase==='play'||G.phase==='pause'||G.phase==='upgrade';
+ if(!on){ntag.style.display='none';return}
+ const P=G.P;ntV.set(P.x,(P.y||0)+3.1,P.z).project(camera);
+ const vis=ntV.z<1&&ntV.z>-1&&cam.dist>1.85;ntag.style.display=vis?'block':'none';
+ if(vis){ntag.style.left=((ntV.x*.5+.5)*innerWidth)+'px';ntag.style.top=((-ntV.y*.5+.5)*innerHeight)+'px'}
+}
 // loop
 let last=performance.now();
 function loop(now){
  requestAnimationFrame(loop);const dt=(now-last)/1000;last=now;
- update(dt);camUpdate(Math.min(dt,.05));render(now/1000);pUpdate(Math.min(.05,dt));floatTexts();if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera);
+ update(dt);camUpdate(Math.min(dt,.05));render(now/1000);pUpdate(Math.min(.05,dt));floatTexts();nameTag();if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera);
 }
 requestAnimationFrame(loop);
 })();
