@@ -108,22 +108,22 @@ html,body{background:#050505}
 /* --- Lobi 3D, toko, papan misi --- */
 #menu .weapon-picker,#menu .weapon-dots{display:none}
 #hud.lobby .bars,#hud.lobby .room,#hud.lobby #tb,#hud.lobby #cds,#hud.lobby #bb,#hud.lobby #pb,#hud.lobby #toast{display:none}
-#act{position:absolute;left:50%;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 96px);transform:translateX(-50%);pointer-events:auto;padding:12px 20px;border:4px solid #111;border-bottom-width:7px;border-radius:14px;background:#ffc323;color:#111;font:900 16px inherit;z-index:5}
+#act{position:absolute;left:50%;bottom:calc(max(10px,env(safe-area-inset-bottom)) + 96px);transform:translateX(-50%);pointer-events:auto;padding:12px 20px;border:4px solid #111;border-bottom-width:7px;border-radius:14px;background:#ffc323;color:#111;font-weight:900;font-size:16px;font-family:inherit;z-index:5}
 #lobToast{position:absolute;top:max(14px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#000c;border:2px solid #4df0ff;color:#fff;padding:8px 14px;border-radius:12px;font-weight:800;font-size:14px;text-align:center;max-width:90vw}
 .lab{position:fixed;left:0;top:0;transform:translate(-50%,-50%);font-weight:900;font-size:14px;color:#fff;background:#000a;border:2px solid #ffc323;border-radius:10px;padding:3px 10px;pointer-events:none;display:none;white-space:nowrap}
 #shopP .card,#missionP .card,#abilityP .card{max-height:92vh;overflow:auto;text-align:left}
 .sec{font-weight:900;font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.8;margin:8px 0 4px}
 .seg{display:flex;flex-wrap:wrap;gap:8px}
-.seg button{padding:8px 14px;border-radius:10px;border:2px solid #34313f;background:#14111f;color:#fff;font:800 14px inherit;cursor:pointer}
+.seg button{padding:8px 14px;border-radius:10px;border:2px solid #34313f;background:#14111f;color:#fff;font-weight:800;font-size:14px;font-family:inherit;cursor:pointer}
 .seg button.on{background:#ffc323;color:#111;border-color:#ffc323}
 .wcard{display:grid;grid-template-columns:34px 1fr auto;gap:10px;align-items:center;padding:8px 10px;border:2px solid #34313f;border-radius:12px;margin:6px 0}
 .wcard b{display:block}.wcard small{opacity:.75;font-size:12px}
 .wb{width:10px;height:40px;background:var(--c);border-radius:4px 4px 0 0;margin:0 auto;box-shadow:0 0 12px var(--c)}
-.sm{padding:8px 12px;border-radius:10px;border:2px solid #34313f;background:#252536;color:#fff;font:800 13px inherit;cursor:pointer}
+.sm{padding:8px 12px;border-radius:10px;border:2px solid #34313f;background:#252536;color:#fff;font-weight:800;font-size:13px;font-family:inherit;cursor:pointer}
 .sm:disabled{opacity:.45;cursor:default}
 .wcard small.su{display:block;color:#ffd23f;opacity:.95;margin-top:3px}
 .seg button:disabled{opacity:.45;cursor:not-allowed}
-.pclose{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));width:48px;height:48px;border-radius:12px;border:3px solid #111;border-bottom-width:6px;background:#ff4d6d;color:#fff;font:900 26px/1 inherit;z-index:30;display:grid;place-items:center;padding:0;cursor:pointer}
+.pclose{position:fixed;top:max(10px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));width:48px;height:48px;border-radius:12px;border:3px solid #111;border-bottom-width:6px;background:#ff4d6d;color:#fff;font-weight:900;font-size:26px;line-height:1;font-family:inherit;z-index:30;display:grid;place-items:center;padding:0;cursor:pointer}
 .pclose:active{transform:translateY(2px)}
 
 /* --- Lobi 2D (hub menu) --- */
@@ -144,7 +144,7 @@ html,body{background:#050505}
 .hub-info strong{font-size:clamp(18px,3vw,26px);color:#fff}
 .hub-info span{color:#ffd23f}.hub-info span#hubA{color:#c9a8ff}
 .hub-btns{display:grid;gap:12px}
-.hub-btn{display:grid;gap:2px;text-align:left;padding:14px 18px;border-radius:18px;border:4px solid #111;border-bottom-width:8px;background:#3fa7ff;color:#101018;font:900 clamp(17px,3vw,24px) inherit;box-shadow:4px 6px 0 #252536;cursor:pointer}
+.hub-btn{display:grid;gap:2px;text-align:left;padding:14px 18px;border-radius:18px;border:4px solid #111;border-bottom-width:8px;background:#3fa7ff;color:#101018;font-weight:900;font-size:clamp(17px,3vw,24px);font-family:inherit;box-shadow:4px 6px 0 #252536;cursor:pointer}
 .hub-btn small{font-weight:700;font-size:12px;opacity:.8}
 .hub-btn.go{background:#ffc323}.hub-btn.ab{background:#b18cff}
 .hub-btn:active{transform:translateY(3px);border-bottom-width:5px}
@@ -163,11 +163,31 @@ html,body{background:#050505}
 #accP .card{text-align:left;max-height:94vh;overflow:auto}
 #accIn,#accOut{display:grid;gap:12px}
 #accP .big{width:100%}
-.ain{width:100%;padding:12px 14px;border-radius:12px;border:3px solid #111;background:#14121f;color:#fff;font:700 16px inherit;box-sizing:border-box}
+.ain{width:100%;padding:12px 14px;border-radius:12px;border:3px solid #111;background:#14121f;color:#fff;font-weight:700;font-size:16px;font-family:inherit;box-sizing:border-box}
 textarea.ain{resize:none;font:600 12px monospace}
 .amsg{min-height:18px;font-size:13px;font-weight:700;color:#ff8f8f}.amsg.ok{color:#8dffb0}
 .achk{display:flex;gap:8px;align-items:flex-start;font-size:12px;opacity:.9}
-.ntag{position:fixed;transform:translate(-50%,-100%);pointer-events:none;z-index:20;padding:2px 10px;border-radius:8px;background:#000a;color:#fff;font:800 13px inherit;white-space:nowrap;text-shadow:0 1px 0 #000}
+.ntag{position:fixed;transform:translate(-50%,-100%);pointer-events:none;z-index:20;padding:2px 10px;border-radius:8px;background:#000a;color:#fff;font-weight:800;font-size:13px;font-family:inherit;white-space:nowrap;text-shadow:0 1px 0 #000}
+
+/* --- Awakening (cutscene super ala Strongest Battlegrounds) --- */
+#awk{position:fixed;inset:0;z-index:40;pointer-events:none;display:none;overflow:hidden;--ac:#c084fc}
+#awk.on{display:block}
+.awk-dim{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 55%,transparent 16%,rgba(0,0,0,.55) 62%,#000 130%);opacity:0;animation:awkdim 1.45s ease-out forwards}
+.awk-tint{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 60%,var(--ac),transparent 62%);mix-blend-mode:screen;opacity:0;animation:awktint 1.45s ease-out forwards}
+@keyframes awkdim{0%{opacity:0}16%{opacity:1}92%{opacity:1}100%{opacity:0}}
+@keyframes awktint{0%{opacity:0}30%{opacity:.5}60%{opacity:.28}100%{opacity:0}}
+.awk-rays{position:absolute;left:50%;top:58%;width:260vmax;height:260vmax;margin:-130vmax 0 0 -130vmax;background:repeating-conic-gradient(from 0deg,transparent 0 2.2deg,#fff 2.2deg 2.8deg,transparent 2.8deg 5.5deg,var(--ac) 5.5deg 6.2deg,transparent 6.2deg 9deg);-webkit-mask:radial-gradient(circle,transparent 4%,#000 9%,transparent 48%);mask:radial-gradient(circle,transparent 4%,#000 9%,transparent 48%);opacity:0;animation:awkrays 1.45s linear forwards}
+@keyframes awkrays{0%{opacity:0;transform:rotate(0) scale(.4)}14%{opacity:.8}88%{opacity:.8}100%{opacity:0;transform:rotate(45deg) scale(1.6)}}
+.awk-bar{position:absolute;left:0;right:0;height:0;background:#000;animation:awkbar 1.45s ease-out forwards}
+.awk-bar.t{top:0}.awk-bar.b{bottom:0}
+@keyframes awkbar{0%{height:0}14%{height:11vh}90%{height:11vh}100%{height:0}}
+.awk-band{position:absolute;left:-12%;right:-12%;top:calc(50% - 12vh);height:24vh;display:grid;place-content:center;text-align:center;background:linear-gradient(90deg,transparent,rgba(0,0,0,.85) 14%,var(--ac) 50%,rgba(0,0,0,.85) 86%,transparent);box-shadow:0 0 70px var(--ac);transform:skewY(-6deg) translateX(-115%);animation:awkband 1.45s cubic-bezier(.16,.9,.2,1) forwards}
+@keyframes awkband{0%{transform:skewY(-6deg) translateX(-115%)}24%{transform:skewY(-6deg) translateX(0)}86%{transform:skewY(-6deg) translateX(2%)}100%{transform:skewY(-6deg) translateX(115%)}}
+.awk-sub{display:block;font-weight:900;font-size:clamp(11px,2.2vw,20px);font-family:inherit;letter-spacing:.7em;color:#fff;text-shadow:0 0 12px #000;margin-bottom:2px}
+.awk-band b{display:block;font-weight:900;font-size:clamp(28px,8vw,84px);font-family:inherit;font-style:italic;letter-spacing:-.02em;color:#fff;-webkit-text-stroke:2px #000;paint-order:stroke fill;text-shadow:4px 4px 0 #000,0 0 22px var(--ac),0 0 46px var(--ac);transform:skewX(-8deg)}
+#awkFlash{position:fixed;inset:0;z-index:41;pointer-events:none;background:radial-gradient(circle,#fff 35%,var(--ac));opacity:0;--ac:#c084fc}
+#awkFlash.go{animation:awkflash .65s ease-out}
+@keyframes awkflash{0%{opacity:1}100%{opacity:0}}
 </style>
 </head>
 <body>
@@ -192,6 +212,8 @@ textarea.ain{resize:none;font:600 12px monospace}
 </div>
 <div id="rotate">↻ Putar HP ke mode landscape agar lebih nyaman <button onclick="this.parentNode.remove()">✕</button></div>
 <div id="vig"></div>
+<div id="awk"><div class="awk-dim"></div><div class="awk-tint"></div><div class="awk-rays"></div><div class="awk-bar t"></div><div class="awk-bar b"></div><div class="awk-band"><span class="awk-sub">A W A K E N I N G</span><b id="awkName"></b></div></div>
+<div id="awkFlash"></div>
 <div class="panel" id="menu"><div class="card">
   <div style="display:flex;justify-content:flex-end"><button class="sm" id="accChip"></button></div>
   <div class="lobby-kicker">ARENA SURVIVAL</div>
@@ -466,7 +488,7 @@ function spawnRoom(){
 }
 function startRun(){
  G.P=mkP();G.special=abilityIdx();G.room=0;G.kills=0;G.time=0;G.shake=0;G.ups=[];
- G.texts.forEach(t=>t.active=false);G.fx.forEach(f=>f.active=false);G.beams.forEach(b=>b.active=false);
+ G.texts.forEach(t=>t.active=false);G.fx.forEach(f=>f.active=false);G.beams.forEach(b=>b.active=false);G.awk=null;$('awk').classList.remove('on');
  G.req={attack:false,dash:false,special:false,super:false};
  spawnRoom();G.camSnap=true;setPhase('play');toast('Wave 1 — kalahkan semua zombie!');
 }
@@ -489,6 +511,7 @@ function hurtPlayer(dmg,fx,fz){
 function update(dtRaw){
  if(G.phase==='lobby'){lobbyUpdate(Math.min(dtRaw,.05));return}
  if(G.phase!=='play')return;
+ if(G.awk){awakenTick(Math.min(dtRaw,.05));return}   // waktu berhenti selama cutscene
  const dt=Math.min(dtRaw,.05),P=G.P;G.time+=dt;
  P.atkCd-=dt;P.comboT-=dt;P.dashT-=dt;P.dashCd-=dt;P.spCd-=dt;P.inv-=dt;P.hurt-=dt;P.swing-=dt;
  if(P.fuse>0){P.fuse-=dt;P.sup=0;if(P.fuse<=0){P.fuse=0;pushFx(P.x,P.z,5,'#c084fc');toast('Bilah kembali menjadi dua')}}
@@ -518,9 +541,7 @@ function update(dtRaw){
  if(P.jump){const J=P.jump;J.t+=dt;const u=Math.min(1,J.t/J.dur);P.x=J.sx+(J.tx-J.sx)*u;P.z=J.sz+(J.tz-J.sz)*u;P.y=Math.sin(Math.PI*u)*3.6;P.inv=Math.max(P.inv,.2);mx=mz=0;P.moving=false;if(u>=1){P.jump=null;P.y=0;groundSlam(P)}}
  if(P.pulses>0){P.pulseT-=dt;if(P.pulseT<=0){P.pulseT=.28;P.pulses--;pushFx(P.x,P.z,4.2,'#8dffda');pushSlash(P.x,P.z,P.ry+P.pulses*1.7,3,1.4);P.swing=.3;P.combo=3;G.shake=Math.max(G.shake,.3);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<4.2+ZDEF[z.type].scale*.4)hitZombie(z,14*P.dm*P.sd,5,P.x,P.z,.35)}}
  if(P.sPulses>0){P.sPulseT-=dt;P.inv=Math.max(P.inv,.2);if(P.sPulseT<=0){P.sPulseT=.17;P.sPulses--;pushFx(P.x,P.z,5.8,'#c084fc');pushSlash(P.x,P.z,P.ry+P.sPulses*2.1,3,1.9);P.swing=.3;P.combo=3;G.shake=Math.max(G.shake,.35);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<5.8+ZDEF[z.type].scale*.4)hitZombie(z,22*P.sM,4,P.x,P.z,.3,2)}}
- if(G.req.super&&P.sup>=100&&!P.jump){
-  P.sup=0;SUPERS[selectedWeapon].run(P);
- }
+ if(G.req.super&&P.sup>=100&&!P.jump&&!G.awk)startAwaken(P);
  if((G.attackHeld||G.req.attack)&&P.atkCd<=0&&P.dashT<=0&&!P.jump&&!P.aiming){
   const t=near(5);if(t)P.ry=Math.atan2(t.x-P.x,t.z-P.z);
   P.combo=P.comboT>0?(P.combo%3)+1:1;const c=P.combo;
@@ -942,6 +963,16 @@ function zombieFx(o,z,i,d,t,dt){
   const n=R()<.5?2:1;for(let k=0;k<n;k++)emitP(z.x+(R()-.5)*.9*sc,(.2+R()*1.7)*sc,z.z+(R()-.5)*.9*sc,(R()-.5)*.7,1.6+R()*1.8,(R()-.5)*.7,.45+R()*.4,(.15+R()*.2)*sc,FIRE_C[(R()*4)|0],0)}
 }
 
+// tiang cahaya aura di sekitar karakter saat awakening
+const awkCol=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.6,9,28,1,true),addM('#ffffff',.3));awkCol.visible=false;scene.add(awkCol);
+const awkCol2=new THREE.Mesh(new THREE.CylinderGeometry(.55,.9,9,20,1,true),addM('#ffffff',.55));awkCol2.visible=false;scene.add(awkCol2);
+function awkAuraFx(t,P){
+ const a=G.awk;awkCol.visible=awkCol2.visible=!!a;if(!a)return;
+ const e=Math.min(1,a.t/.4),p=1+.12*Math.sin(t*25);
+ awkCol.position.set(P.x,4.4,P.z);awkCol2.position.set(P.x,4.4,P.z);
+ awkCol.scale.set(e*p,1,e*p);awkCol2.scale.set(e*1.1/p,1,e*1.1/p);awkCol.rotation.y=t*4;awkCol2.rotation.y=-t*6;
+ awkCol.material.color.set(a.col);awkCol.material.opacity=.22+.1*Math.sin(t*18);awkCol2.material.opacity=.5;
+}
 // ===== model 3D unik untuk tiap pedang =====
 const wg=(arm)=>{const g=new THREE.Group();g.position.set(0,-.62,.05);g.rotation.x=Math.PI/2;g.visible=false;arm.add(g);return g};
 const rot=(m,z)=>{m.rotation.z=z;return m};
@@ -1031,6 +1062,8 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
  if(lastRoom!==G.room)applyTheme();
  const P=G.P;
  pl.g.position.set(P.x,P.y||0,P.z);pLight.position.set(P.x,3.5,P.z);pl.g.rotation.y=lerpAng(pl.g.rotation.y,P.ry,.35);
+ if(G.awk){const e=Math.min(1,G.awk.t/.6);pl.g.position.y=(P.y||0)+.6*e+Math.sin(t*30)*.03*e;pLight.color.set(G.awk.col);pLight.intensity=1.05+3.2*e}else if(pLight.intensity!==1.05){pLight.intensity=1.05;pLight.color.set(0xfff3d0)}
+ awkAuraFx(t,P);
  const runWave=P.moving?Math.sin(t*15)*.95:Math.sin(t*2)*.035;
  const w=P.dashT>0?1.15:runWave;
  pl.rig.legL.rotation.x=w;pl.rig.legR.rotation.x=-w;
@@ -1047,6 +1080,7 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
   }
  }
  swL.visible=dualOn;
+ if(G.awk){const e=Math.min(1,G.awk.t/.45);aR=-.7-1.95*e+Math.sin(t*45)*.05;aL=-.7-1.75*e+Math.sin(t*47)*.05;spin=0}
  pl.rig.armL.rotation.x=aL;pl.rig.armR.rotation.x=aR;
  pl.rig.body.rotation.y=spin+(P.moving?Math.sin(t*7)*.035:0);
  pl.rig.body.position.y=P.moving?Math.abs(Math.sin(t*15))*.075:Math.sin(t*2)*.018;
@@ -1108,8 +1142,11 @@ function camUpdate(dt){
   camera.position.set(P.x+Math.sin(cam.yaw)*cp*cam.dist+rightX*shoulder+(Math.random()-.5)*s,1.6+sp*cam.dist+(Math.random()-.5)*s,P.z+Math.cos(cam.yaw)*cp*cam.dist+rightZ*shoulder);
   const lookAhead=5.0;
   camera.lookAt(P.x+rightX*shoulder*.35-Math.sin(cam.yaw)*lookAhead,2.65+sp*1.2,P.z+rightZ*shoulder*.35-Math.cos(cam.yaw)*lookAhead);
+  if(G.awk){const e=Math.min(1,G.awk.t/.5),ee=e*e*(3-2*e);camera.position.lerp(awkV.set(P.x,2.1,P.z),.55*ee);camera.lookAt(P.x,2.15+.25*ee,P.z);camera.rotateZ(.13*ee*Math.cos(G.awk.t*2.2))}
  }
+ {const tf=64-(G.awk?20*Math.min(1,G.awk.t/.5):0);if(Math.abs(camera.fov-tf)>.01){camera.fov=tf;camera.updateProjectionMatrix()}}
 }
+const awkV=new THREE.Vector3();
 function floatTexts(){
  camera.updateMatrixWorld();
  G.texts.forEach((t,i)=>{const el=fts[i];if(!t.active){el.style.display='none';return}
@@ -1338,6 +1375,36 @@ const jend=()=>{G.joy.x=G.joy.z=0;knob.style.transform='none'};
 joy.addEventListener('pointerdown',e=>{joy.setPointerCapture(e.pointerId);jset(e)});
 joy.addEventListener('pointermove',e=>{if(joy.hasPointerCapture(e.pointerId))jset(e)});
 joy.addEventListener('pointerup',jend);joy.addEventListener('pointercancel',jend);
+// ===== Awakening: cutscene super (waktu berhenti, aura, zoom kamera, banner nama super) =====
+const AWK_DUR=1.45;
+function startAwaken(P){
+ const w=currentWeapon(),col=w.color||'#c084fc';
+ G.awk={t:0,dur:AWK_DUR,col,name:SUPERS[selectedWeapon].name,rings:0};
+ G.req.super=G.req.attack=G.req.dash=G.req.special=false;G.attackHeld=false;P.kx=P.kz=0;P.aiming=false;
+ const ov=$('awk');ov.style.setProperty('--ac',col);$('awkName').textContent=G.awk.name.toUpperCase();
+ ov.classList.remove('on');void ov.offsetWidth;ov.classList.add('on');
+ pushFx(P.x,P.z,3.2,col);G.shake=Math.max(G.shake,.4);
+}
+function awakenTick(dt){
+ const a=G.awk,P=G.P,R=Math.random;a.t+=dt;
+ const k=Math.min(1,a.t/a.dur);
+ // aura naik berputar mengelilingi karakter
+ for(let i=0;i<(4+Math.round(k*6));i++){const an=R()*6.283,r=.6+R()*.7;
+  emitP(P.x+Math.cos(an)*r,.1+R()*.5,P.z+Math.sin(an)*r,Math.cos(an+1.57)*1.6,4+R()*6+k*4,Math.sin(an+1.57)*1.6,.6+R()*.5,.14+R()*.2,R()<.55?a.col:R()<.5?'#ffffff':'#ffe9a0',0)}
+ // puing & percikan terseret ke atas
+ if(R()<.5)emitP(P.x+(R()-.5)*5,.1,P.z+(R()-.5)*5,0,3+R()*5,0,.9,.18+R()*.2,'#b8b8c8',0);
+ // cincin kejut berulang di tanah
+ if(a.t>=a.rings*.36){pushFx(P.x,P.z,3+a.rings*1.8,a.rings%2?'#ffffff':a.col);a.rings++}
+ G.shake=Math.max(G.shake,.25+.6*k);
+ // dilepas
+ if(a.t>=a.dur){
+  G.awk=null;$('awk').classList.remove('on');
+  const fl=$('awkFlash');fl.style.setProperty('--ac',a.col);fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go');
+  P.sup=0;pushFx(P.x,P.z,13,a.col);pushFx(P.x,P.z,8,'#ffffff');
+  burst(P.x,1.2,P.z,40,[a.col,'#ffffff','#ffe9a0'],9,6,.28,.9,6);
+  SUPERS[selectedWeapon].run(P);G.shake=Math.max(G.shake,1.9);
+ }
+}
 // ===== Suara & efek (semua disintesis lewat WebAudio, tanpa file audio) =====
 const AU=(()=>{
  let ctx=null,master,sfxG,musG,nbuf,mus={mode:'',step:0,next:0};
@@ -1377,6 +1444,7 @@ const AU=(()=>{
   dash(){noise(.18,.18,500,3200)},
   special(i){const b=240+(i%6)*35;tone(b,.4,'sawtooth',.13,2.4);tone(b/2,.45,'square',.09,.5);noise(.32,.18,400,2600)},
   super(w){const b=SUPER_BASE[w%7]||200;tone(b/2,.9,'sine',.55,.35);noise(.8,.34,700,70,'lowpass');tone(b,.7,'sawtooth',.12,3,.03,undefined,2500);[1,1.25,1.5,2].forEach((r,i)=>tone(b*2*r,.5,'triangle',.08,1,.18+i*.07))},
+  awaken(){tone(80,1.4,'sawtooth',.15,6,0,undefined,1100);noise(1.35,.22,200,5200);[0,.36,.72,1.08].forEach(d=>tone(55,.32,'sine',.4,.5,d))},
   ready(){tone(880,.1,'triangle',.12);tone(1320,.18,'triangle',.12,1,.09)},
   clear(){[523,659,784,1047].forEach((f,i)=>tone(f,.24,'triangle',.15,1,i*.09))},
   pick(){tone(880,.1,'square',.09);tone(1320,.14,'square',.09,1,.08)},
@@ -1431,14 +1499,15 @@ const weaponIdx=()=>Object.keys(WEAPONS).indexOf(selectedWeapon);
 {const _pk=pick;pick=function(){AU.play('pick');return _pk.apply(this,arguments)}}
 {const _up=update;update=function(dt){
   if(G.phase!=='play')return _up.apply(this,arguments);
-  const P=G.P,b={atk:P.atkCd,dash:P.dashT,sp:P.spCd,sup:P.sup,kills:G.kills,cl:G.cleared};
+  const P=G.P,b={atk:P.atkCd,dash:P.dashT,sp:P.spCd,sup:P.sup,kills:G.kills,cl:G.cleared,aw:!!G.awk};
   const r=_up.apply(this,arguments);
   if(G.phase!=='play')return r;
   const Q=G.P;
   if(Q.atkCd>b.atk+.05)AU.play('swing',Q.combo||1);
   if(Q.dashT>0&&b.dash<=0)AU.play('dash');
   if(Q.spCd>b.sp+.5)AU.play('special',G.special);
-  if(b.sup>=100&&Q.sup<50){AU.play('super',weaponIdx());screenFlash();vigHit()}
+  if(!b.aw&&G.awk)AU.play('awaken');
+  if(b.sup>=100&&Q.sup<50){AU.play('super',weaponIdx())}
   else if(b.sup<100&&Q.sup>=100)AU.play('ready');
   const dk=G.kills-b.kills;if(dk>=4)AU.play('big');else if(dk>0)AU.play('kill');
   if(!b.cl&&G.cleared)AU.play('clear');
@@ -1506,6 +1575,7 @@ if(!PROFILE)openAcc(true);
 const ntag=document.createElement('div');ntag.className='ntag';ntag.style.display='none';document.body.appendChild(ntag);ntag.textContent=accName();
 const ntV=new THREE.Vector3();
 function nameTag(){
+ $('awk').style.visibility=G.phase==='play'?'visible':'hidden';
  const on=G.phase==='play'||G.phase==='pause'||G.phase==='upgrade';
  if(!on){ntag.style.display='none';return}
  const P=G.P;ntV.set(P.x,(P.y||0)+3.1,P.z).project(camera);
