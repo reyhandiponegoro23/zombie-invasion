@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Zombie Invasion — Neon Voxel City</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Zombie Invasion">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{--ink:#1d1633;--y:#ffd23f;--r:#ff4d6d;--g:#4dff88;--b:#3fa7ff;color-scheme:dark}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -199,6 +205,8 @@ textarea.ain{resize:none;font:600 12px monospace}
   </div>
   <div class="weapon-dots" id="weaponDots"><i class="active"></i><i></i><i></i><i></i></div>
   <button class="big" id="go">MASUK KE LOBI&nbsp; →</button>
+  <button class="big alt" id="installBtn" style="display:none">📲 Instal Game</button>
+  <p class="hint" id="installMsg" style="display:none"></p>
   <p class="hint">20–30 zombie tiap wave · Zombie lebih kuat · Musuh baru setiap 10 wave · Perempatan kota besar · Jeda 7 detik · WASD bergerak · Shift = Shift Lock · Klik kanan putar kamera · Klik kiri menyerang · Q dash · R special · E super</p>
 </div></div>
 <div class="panel" id="accP" style="display:none"><button class="pclose" id="accX" aria-label="Tutup">✕</button><div class="card">
@@ -1512,6 +1520,21 @@ function hubRender(){
  const bg=scene.background,fg=scene.fog;scene.background=null;scene.fog=null;
  try{hubR.render(scene,cam2)}finally{scene.background=bg;scene.fog=fg;hubPad.visible=false}
 }
+// ===== Tombol instal (PWA) =====
+let deferredInstall=null;
+const isStandalone=()=>{try{return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone===true}catch(e){return false}};
+function refreshInstall(){$('installBtn').style.display=isStandalone()?'none':'block'}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;refreshInstall()});
+addEventListener('appinstalled',()=>{deferredInstall=null;$('installMsg').style.display='none';refreshInstall();toast('Game terpasang di perangkatmu!')});
+$('installBtn').onclick=async()=>{
+ const m=$('installMsg');
+ if(deferredInstall){const d=deferredInstall;deferredInstall=null;try{d.prompt();await d.userChoice}catch(e){}refreshInstall();return}
+ const ios=/iphone|ipad|ipod/i.test(navigator.userAgent);
+ m.textContent=ios?'iPhone/iPad: ketuk tombol Bagikan (kotak dengan panah ke atas) di Safari, lalu pilih "Tambah ke Layar Utama".':'Buka menu browser (⋮ atau …), lalu pilih "Instal aplikasi" atau "Tambahkan ke layar utama". Game harus dibuka lewat alamat https (bukan file).';
+ m.style.display='block';
+};
+refreshInstall();
+if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})});
 // loop
 let last=performance.now();
 function loop(now){
