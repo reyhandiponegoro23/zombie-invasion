@@ -364,6 +364,7 @@ let bossPick=false;
 // Efek pasif pedang: tiap tebasan yang kena memberi status ke zombie
 const PASSIVE={flame:'Tiap tebasan yang kena membakar zombie 3 detik.',frost:'Tiap tebasan yang kena membekukan zombie 3 detik (bos 1,2 detik, tidak bisa terus-menerus).'};
 function weaponProc(z,P){
+ hitBurstFx(z);
  if(z.dead)return;
  if(selectedWeapon==='flame'){z.burn=3;z.burnT=Math.min(z.burnT>0?z.burnT:.25,.25);z.burnM=P.dm*currentWeapon().damage}
  else if(selectedWeapon==='frost'){
@@ -839,7 +840,128 @@ function lobbyAnim(t){
  camera.updateMatrixWorld();
  labs.forEach(l=>{lv3.set(l.x,l.y,l.z).project(camera);const vis=lv3.z<1&&lv3.z>-1&&!lobbyBusy;l.d.style.display=vis?'block':'none';l.d.style.left=((lv3.x*.5+.5)*innerWidth)+'px';l.d.style.top=((-lv3.y*.5+.5)*innerHeight)+'px'});
 }
-function render(t){lobbyAnim(t);
+// ===== Efek visual: partikel api/es, balok es di zombie, dan model 3D unik tiap pedang =====
+const bm=c=>new THREE.MeshBasicMaterial({color:c});
+const addM=(c,o)=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
+const NP=700;
+const pMesh=new THREE.InstancedMesh(BOX,new THREE.MeshBasicMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}),NP);
+pMesh.frustumCulled=false;scene.add(pMesh);
+const PD=Array.from({length:NP},()=>({a:false,x:0,y:0,z:0,vx:0,vy:0,vz:0,l:0,m:1,s:.2,g:0,r:1,gr:1,b:1}));
+let pI=0,renderLast=0;const _po=new THREE.Object3D(),_pc=new THREE.Color();
+_pc.set('#000000');pMesh.setColorAt(0,_pc);
+const FIRE_C=['#ff4d00','#ff9a1a','#ffd23f','#fff3a0'],ICE_C=['#ffffff','#bfefff','#7ad7ff','#e8fbff'];
+function emitP(x,y,z,vx,vy,vz,life,size,hex,grav){const p=PD[pI];pI=(pI+1)%NP;_pc.set(hex);p.a=true;p.x=x;p.y=y;p.z=z;p.vx=vx;p.vy=vy;p.vz=vz;p.l=life;p.m=life;p.s=size;p.g=grav||0;p.r=_pc.r;p.gr=_pc.g;p.b=_pc.b}
+function pUpdate(dt){
+ for(let i=0;i<NP;i++){
+  const p=PD[i];
+  if(p.a){p.l-=dt;if(p.l<=0)p.a=false}
+  if(!p.a){_po.position.set(0,-99,0);_po.scale.setScalar(0);_po.updateMatrix();pMesh.setMatrixAt(i,_po.matrix);continue}
+  p.vy-=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;
+  const u=p.l/p.m;_po.position.set(p.x,p.y,p.z);_po.scale.setScalar(p.s*(.35+.65*u));_po.updateMatrix();pMesh.setMatrixAt(i,_po.matrix);
+  _pc.setRGB(p.r*u,p.gr*u,p.b*u);pMesh.setColorAt(i,_pc);
+ }
+ pMesh.instanceMatrix.needsUpdate=true;if(pMesh.instanceColor)pMesh.instanceColor.needsUpdate=true;
+}
+const burst=(x,y,z,n,cols,sp,up,size,life,grav)=>{for(let k=0;k<n;k++){const a=Math.random()*6.283,v=sp*(.4+Math.random()*.6);emitP(x,y,z,Math.cos(a)*v,up*(.3+Math.random()),Math.sin(a)*v,life*(.7+Math.random()*.6),size*(.6+Math.random()*.8),cols[(Math.random()*cols.length)|0],grav)}};
+
+// balok es & kobaran api pada tiap zombie
+zs.forEach(o=>{
+ const ice=new THREE.Group();ice.visible=false;o.g.add(ice);
+ const im=new THREE.MeshBasicMaterial({color:'#9fe8ff',transparent:true,opacity:.42,depthWrite:false,fog:false});
+ const ib=new THREE.Mesh(BOX,im);ib.position.set(0,1.15,0);ib.scale.set(1.6,2.55,1.3);ice.add(ib);
+ const em=new THREE.MeshBasicMaterial({color:'#e8fbff',transparent:true,opacity:.85,depthWrite:false,fog:false});
+ [[-.75,.5,.5,.7,.5],[.78,.9,-.5,.9,-.5],[0,2.45,.1,.8,.3],[.5,.1,.7,.5,-.4]].forEach(([x,y,z,h,r])=>{const sh=new THREE.Mesh(BOX,em);sh.position.set(x,y+h/2,z);sh.scale.set(.2,h,.2);sh.rotation.z=r;ice.add(sh)});
+ o.ice=ice;o.iceM=im;o.iceT=0;
+ const fire=new THREE.Mesh(BOX,addM('#ff7a1a',.22));fire.position.set(0,1.1,0);fire.scale.set(1.35,2.3,1.15);fire.visible=false;o.g.add(fire);
+ o.fire=fire;o.wasF=false;
+});
+function zombieFx(o,z,i,d,t,dt){
+ const fr=z.freeze>0&&!z.dead,bn=z.burn>0&&!z.dead,sc=d.scale,R=Math.random;
+ // --- es ---
+ o.ice.visible=fr;
+ if(fr){o.iceT+=dt;const pop=Math.min(1,o.iceT/.16);o.ice.scale.setScalar(.65+.35*pop);o.iceM.opacity=.38+.1*Math.sin(t*6+i);
+  if(!o.wasF)burst(z.x,1.0*sc,z.z,10,ICE_C,2.4,1.5,.16*sc,.55,4);
+  if(R()<.35)emitP(z.x+(R()-.5)*1.2*sc,R()*2.2*sc,z.z+(R()-.5)*1.2*sc,(R()-.5)*.3,.3+R()*.4,(R()-.5)*.3,.9,(.06+R()*.08)*sc,ICE_C[(R()*4)|0],-.2)}
+ else o.iceT=0;
+ if(o.wasF&&!fr)burst(z.x,1.1*sc,z.z,26,ICE_C,5.5,4.5,.2*sc,.8,10);   // pecah!
+ o.wasF=fr;
+ // --- api ---
+ o.fire.visible=bn;
+ if(bn){o.fire.material.opacity=.15+.1*Math.sin(t*20+i);o.fire.scale.set(1.35+.15*Math.sin(t*17+i),2.3+.35*Math.sin(t*23+i),1.15);
+  const n=R()<.5?2:1;for(let k=0;k<n;k++)emitP(z.x+(R()-.5)*.9*sc,(.2+R()*1.7)*sc,z.z+(R()-.5)*.9*sc,(R()-.5)*.7,1.6+R()*1.8,(R()-.5)*.7,.45+R()*.4,(.15+R()*.2)*sc,FIRE_C[(R()*4)|0],0)}
+}
+
+// ===== model 3D unik untuk tiap pedang =====
+const wg=(arm)=>{const g=new THREE.Group();g.position.set(0,-.62,.05);g.rotation.x=Math.PI/2;g.visible=false;arm.add(g);return g};
+const rot=(m,z)=>{m.rotation.z=z;return m};
+// Greatblade: bilah emas lebar & tebal, pelindung besar bermata merah
+const wGreat=wg(pl.rig.armR);
+box(mat('#3a2418'),[0,0,0],[.16,.52,.17],wGreat);box(mat('#8a5a12'),[0,.28,0],[1,.15,.26],wGreat);
+box(bm('#ff3b3b'),[0,.28,.14],[.17,.17,.06],wGreat);box(mat('#e8a21a'),[0,-.32,0],[.28,.2,.24],wGreat);
+box(bm('#ffcf3a'),[0,1.08,0],[.42,1.55,.1],wGreat);box(bm('#fff6c8'),[0,1.08,.06],[.09,1.45,.03],wGreat);
+rot(box(bm('#ffcf3a'),[0,1.9,0],[.3,.3,.1],wGreat),Math.PI/4);
+box(bm('#d98a10'),[.23,.85,0],[.09,.22,.12],wGreat);box(bm('#d98a10'),[-.23,1.25,0],[.09,.22,.12],wGreat);box(bm('#d98a10'),[.23,1.55,0],[.09,.22,.12],wGreat);
+// Energy Blade: sinar energi bercahaya dengan cincin berputar
+const wEnergy=wg(pl.rig.armR);
+box(mat('#2b2f4a'),[0,0,0],[.13,.52,.14],wEnergy);box(mat('#5b6bff'),[0,.29,0],[.4,.11,.22],wEnergy);box(bm('#4df0ff'),[0,-.3,0],[.2,.1,.2],wEnergy);
+box(bm('#ffffff'),[0,1.0,0],[.09,1.45,.07],wEnergy);
+const eG1=new THREE.Mesh(BOX,addM('#c084fc',.45));eG1.position.set(0,1.0,0);eG1.scale.set(.27,1.6,.2);wEnergy.add(eG1);
+const eG2=new THREE.Mesh(BOX,addM('#4df0ff',.2));eG2.position.set(0,1.0,0);eG2.scale.set(.46,1.8,.34);wEnergy.add(eG2);
+const eRings=[0,1,2].map(i=>{const r=new THREE.Mesh(BOX,addM('#d6f6ff',.7));r.scale.set(.5,.04,.5);wEnergy.add(r);return r});
+wEnergy.userData={g1:eG1,rings:eRings};
+// Katana: bilah ramping melengkung, gagang merah-hitam, tsuba emas
+const wKat=wg(pl.rig.armR);
+box(mat('#1a1a24'),[0,0,0],[.11,.52,.12],wKat);[-.15,0,.15].forEach(y=>box(mat('#c0213c'),[0,y,0],[.13,.07,.14],wKat));
+box(mat('#d4af37'),[0,.29,0],[.36,.05,.36],wKat);
+[[.7,0,0],[1.12,.025,-.05],[1.52,.07,-.09],[1.9,.13,-.13]].forEach(([y,z,r],k)=>{const b=box(bm('#f6e9f2'),[0,y,z],[.085,.48,.045],wKat);b.rotation.x=r;box(bm('#ff7ab8'),[.04,y,z+.012],[.02,.46,.02],wKat).rotation.x=r});
+rot(box(bm('#ffffff'),[0,2.17,.16],[.07,.12,.04],wKat),0);
+// Flame Sword: bilah api bergerigi dengan lidah api menyala
+const wFlame=wg(pl.rig.armR);
+box(mat('#4a1410'),[0,0,0],[.15,.48,.16],wFlame);box(mat('#8a1c0c'),[0,.27,0],[.66,.12,.22],wFlame);
+rot(box(bm('#ffb000'),[.36,.35,0],[.1,.24,.1],wFlame),-.4);rot(box(bm('#ffb000'),[-.36,.35,0],[.1,.24,.1],wFlame),.4);
+box(bm('#ff4d1a'),[0,.95,0],[.24,1.35,.09],wFlame);box(bm('#ffb000'),[0,.95,.05],[.13,1.3,.04],wFlame);box(bm('#fff3a0'),[0,.95,.07],[.05,1.15,.03],wFlame);
+rot(box(bm('#ff4d1a'),[0,1.68,0],[.24,.24,.09],wFlame),Math.PI/4);
+[[.14,.7],[-.14,.95],[.14,1.2],[-.14,1.45]].forEach(([x,y])=>box(bm('#ff4d1a'),[x,y,0],[.08,.16,.1],wFlame));
+const fTongues=[.55,.85,1.15,1.45].map(y=>{const m=new THREE.Mesh(BOX,addM('#ff7a1a',.55));m.position.set(0,y,0);m.scale.set(.3,.5,.18);wFlame.add(m);return m});
+wFlame.userData={tongues:fTongues};
+// Frost Blade: bilah kristal es dengan serpihan runcing
+const wFrost=wg(pl.rig.armR);
+box(mat('#27406a'),[0,0,0],[.14,.48,.15],wFrost);box(mat('#9ad8ff'),[0,.27,0],[.62,.11,.22],wFrost);
+rot(box(bm('#e8fbff'),[.34,.4,0],[.09,.3,.09],wFrost),-.5);rot(box(bm('#e8fbff'),[-.34,.4,0],[.09,.3,.09],wFrost),.5);
+box(bm('#bfefff'),[0,.98,0],[.24,1.45,.09],wFrost);box(bm('#ffffff'),[0,.98,.055],[.07,1.35,.03],wFrost);
+const fA=new THREE.Mesh(BOX,addM('#7ad7ff',.32));fA.position.set(0,1.0,0);fA.scale.set(.4,1.6,.17);wFrost.add(fA);
+rot(box(bm('#ffffff'),[0,1.76,0],[.24,.24,.09],wFrost),Math.PI/4);
+[[.19,.6,.6],[-.19,.82,-.6],[.2,1.06,.6],[-.19,1.28,-.6],[.17,1.5,.6],[-.16,1.62,-.6]].forEach(([x,y,r])=>rot(box(bm('#e8fbff'),[x+Math.sign(x)*.07,y,0],[.1,.34,.08],wFrost),r));
+wFrost.userData={aura:fA};
+const WMODELS={greatblade:wGreat,energy:wEnergy,katana:wKat,flame:wFlame,frost:wFrost},tipV=new THREE.Vector3();
+const tipOf=(g,y)=>{tipV.set(0,y,0);g.localToWorld(tipV);return tipV};
+function weaponFx(t,P,dt){
+ const w=selectedWeapon,std=(w==='sword'||w==='dual'),R=Math.random,sg=P.swing>0;
+ sw.visible=std;if(!std)swL.visible=false;
+ for(const k in WMODELS)WMODELS[k].visible=(w===k);
+ fTongues.forEach((m,i)=>{m.scale.set(.26+.1*Math.sin(t*18+i*2),.45+.2*Math.sin(t*23+i),.16);m.material.opacity=.4+.2*Math.sin(t*15+i)});
+ eG1.material.opacity=.4+.12*Math.sin(t*9);eRings.forEach((r,i)=>{r.rotation.y=t*3+i;r.position.y=.55+((t*.6+i/3)%1)*1.15});
+ fA.material.opacity=.3+.1*Math.sin(t*5);
+ if(!pl.g.visible)return;
+ pl.g.updateMatrixWorld(true);
+ let tp;
+ if(w==='flame'){for(let k=0;k<(sg?3:2);k++){tp=tipOf(wFlame,1.3+R()*.4);emitP(tp.x+(R()-.5)*.2,tp.y,tp.z+(R()-.5)*.2,(R()-.5)*.8,1.3+R()*1.6,(R()-.5)*.8,.4+R()*.3,.12+R()*.16,FIRE_C[(R()*4)|0],0)}}
+ else if(w==='frost'){tp=tipOf(wFrost,1.1+R()*.7);emitP(tp.x+(R()-.5)*.3,tp.y,tp.z+(R()-.5)*.3,(R()-.5)*.5,-.1,(R()-.5)*.5,.7,.07+R()*.07,ICE_C[(R()*4)|0],1.2);
+  if(sg){tp=tipOf(wFrost,1.8);emitP(tp.x,tp.y,tp.z,(R()-.5)*2,R()*1.2,(R()-.5)*2,.5,.12,'#ffffff',2)}}
+ else if(w==='energy'){tp=tipOf(wEnergy,.6+R()*1.2);const a=R()*6.28;emitP(tp.x,tp.y,tp.z,Math.cos(a)*1.4,(R()-.3)*1.2,Math.sin(a)*1.4,.4,.08+R()*.06,R()<.5?'#c084fc':'#4df0ff',0)}
+ else if(w==='katana'){if(sg)for(let k=0;k<2;k++){tp=tipOf(wKat,1+R()*1.2);emitP(tp.x,tp.y,tp.z,(R()-.5)*1.5,(R()-.2)*1.5,(R()-.5)*1.5,.55,.1,R()<.5?'#ff7ab8':'#ffffff',1.5)}}
+ else if(w==='greatblade'){if(sg)for(let k=0;k<2;k++){tp=tipOf(wGreat,1.2+R()*.7);emitP(tp.x,tp.y,tp.z,(R()-.5)*3,R()*2,(R()-.5)*3,.45,.12,R()<.5?'#ffd23f':'#ff7a2f',4)}}
+ else if(w==='dual'){if(sg){[sw,swL].forEach(g=>{tp=tipOf(g,1.3);emitP(tp.x,tp.y,tp.z,(R()-.5)*1.5,R()*1.2,(R()-.5)*1.5,.45,.1,'#c084fc',0)})}}
+ else if(sg){tp=tipOf(sw,1.3);emitP(tp.x,tp.y,tp.z,(R()-.5)*1.5,R()*1.2,(R()-.5)*1.5,.4,.09,'#bff3ff',0)}
+}
+// percikan saat tebasan mengenai zombie
+function hitBurstFx(z){
+ const sc=ZDEF[z.type].scale,y=1.2*sc;
+ if(selectedWeapon==='flame')burst(z.x,y,z.z,8,FIRE_C,3.2,3,.2*sc,.5,-1);
+ else if(selectedWeapon==='frost')burst(z.x,y,z.z,8,ICE_C,3.2,2.5,.16*sc,.55,5);
+ else burst(z.x,y,z.z,4,[currentWeapon().color,'#ffffff'],3,2,.12*sc,.35,6);
+}
+function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t;lobbyAnim(t);
  if(lastRoom!==G.room)applyTheme();
  const P=G.P;
  pl.g.position.set(P.x,P.y||0,P.z);pLight.position.set(P.x,3.5,P.z);pl.g.rotation.y=lerpAng(pl.g.rotation.y,P.ry,.35);
@@ -873,8 +995,9 @@ function render(t){lobbyAnim(t);
   sw.userData.aura.visible=isDual;swL.userData.aura.visible=isDual;
   sw.userData.glow.intensity=isDual?1.8:0;swL.userData.glow.intensity=isDual?1.8:0;
  pl.g.visible=cam.dist>1.85&&!(P.inv>0&&P.dashT<=0&&Math.floor(t*20)%2===0);
+ weaponFx(t,P,rdt);
  zs.forEach((o,i)=>{
-  const z=G.zombies[i];if(!z.active){o.g.visible=false;return}
+  const z=G.zombies[i];if(!z.active){o.g.visible=false;o.wasF=false;return}
   const d=ZDEF[z.type];o.g.visible=true;o.crown.visible=z.type==='boss';if(z.type==='boss'&&o.crown.material)o.crown.material.color.set(BOSSES[z.bi||0].crown);
   o.g.scale.setScalar(d.scale*(z.dead?Math.min(1,Math.max(0,z.dying/.35)):.4+.6*z.pop));
   o.g.position.set(z.x,0,z.z);o.g.rotation.y=Math.atan2(P.x-z.x,P.z-z.z);
@@ -884,11 +1007,12 @@ function render(t){lobbyAnim(t);
   o.rig.armL.rotation.x=o.rig.armR.rotation.x=z.wind>0?-2.7:-1.45+Math.sin(z.walk*3)*.12;
   o.rig.body.rotation.x=z.wind>0?-.25:0;
   o.bar.visible=!z.dead&&z.hp<z.maxHp;const f=Math.max(.001,z.hp/z.maxHp);o.fill.scale.x=f;o.fill.position.x=-(1-f)*.5;
+  zombieFx(o,z,i,d,t,rdt);
  });
  G.slashes.forEach((s,i)=>{const o=slashes[i];o.g.visible=s.active;if(!s.active)return;
  const p=Math.min(1,s.t/.2),fade=1-Math.max(0,(s.t-.14)/.18),span=s.kind===3?Math.PI:1.25;
  o.g.position.set(s.x,s.kind===3?1:1.3,s.z);o.g.rotation.set(0,s.ry,s.kind===1?.9:s.kind===2?-.9:0);
- o.m.color.set(selectedWeapon==='dual'?'#b45cff':'#bff3ff');o.m.opacity=(selectedWeapon==='dual'?.98:.85)*fade;
+ o.m.color.set(selectedWeapon==='dual'?'#b45cff':currentWeapon().color);o.m.opacity=(selectedWeapon==='dual'?.98:.85)*fade;
  o.parts.forEach((b,k)=>{const u=k/(SN-1),th=(u*2-1)*span,R=2.4*s.sc*(.9+.2*p),wd=(Math.sin(Math.PI*u)*.6+.08)*s.sc;
   b.visible=u<=p;b.position.set(Math.sin(th)*R,0,Math.cos(th)*R);b.rotation.y=th;b.scale.set(.6*s.sc*(span/1.25),.07,wd)})});
  {const tg=P.aiming?aimTarget(P):P.jump?[P.jump.tx,P.jump.tz]:null;
@@ -1011,11 +1135,19 @@ const weaponDescriptions={
  energy:'Bilah energi dengan jangkauan luas.'
 };
 const weaponSvg=(id)=>{
- const grad=id==='energy'?'energyGrad':id==='greatblade'?'goldGrad':id==='dual'?'purpleGrad':'iceGrad';
- const blade=(x,flip=false)=>`<g transform="translate(${x} 0) ${flip?'rotate(0 110 75)':''}"><path d="M110 15 L121 92 L110 111 L99 92 Z" fill="url(#${grad})" stroke="#e8e8ff" stroke-width="2"/><path d="M110 15 L110 108" stroke="#fff" stroke-width="2" opacity=".8"/><path d="M88 103 L132 103 L126 112 L94 112 Z" fill="#b7a8d8" stroke="#252033" stroke-width="2"/><path d="M110 112 L110 143" stroke="#c8b8a0" stroke-width="8" stroke-linecap="round"/><path d="M99 145 L121 145" stroke="#e2d5c2" stroke-width="5" stroke-linecap="round"/></g>`;
- const defs='<defs><linearGradient id="iceGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".5" stop-color="#8eeaff"/><stop offset="1" stop-color="#2875ff"/></linearGradient><linearGradient id="purpleGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".45" stop-color="#d7a0ff"/><stop offset="1" stop-color="#7b20ff"/></linearGradient><linearGradient id="goldGrad"><stop stop-color="#fff4a6"/><stop offset=".5" stop-color="#ffc52b"/><stop offset="1" stop-color="#e66b16"/></linearGradient><linearGradient id="energyGrad"><stop stop-color="#fff"/><stop offset=".45" stop-color="#a4ffff"/><stop offset="1" stop-color="#19b9ff"/></linearGradient></defs>';
- let shapes=id==='dual'?blade(-28)+blade(28):id==='greatblade'?'<g transform="translate(0 -3) scale(1.18 1.08)">'+blade(0)+'</g>':blade(0);
- return `<svg viewBox="0 0 220 160" role="img" aria-label="${WEAPONS[id].name}">${defs}${shapes}</svg>`;
+ const grad=id==='dual'?'purpleGrad':'iceGrad';
+ const blade=(x)=>`<g transform="translate(${x} 0)"><path d="M110 15 L121 92 L110 111 L99 92 Z" fill="url(#${grad})" stroke="#e8e8ff" stroke-width="2"/><path d="M110 15 L110 108" stroke="#fff" stroke-width="2" opacity=".8"/><path d="M88 103 L132 103 L126 112 L94 112 Z" fill="#b7a8d8" stroke="#252033" stroke-width="2"/><path d="M110 112 L110 143" stroke="#c8b8a0" stroke-width="8" stroke-linecap="round"/><path d="M99 145 L121 145" stroke="#e2d5c2" stroke-width="5" stroke-linecap="round"/></g>`;
+ const defs='<defs><linearGradient id="iceGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".5" stop-color="#8eeaff"/><stop offset="1" stop-color="#2875ff"/></linearGradient><linearGradient id="purpleGrad" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset=".45" stop-color="#d7a0ff"/><stop offset="1" stop-color="#7b20ff"/></linearGradient><linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff4a6"/><stop offset=".5" stop-color="#ffc52b"/><stop offset="1" stop-color="#e66b16"/></linearGradient><linearGradient id="energyGrad" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".45" stop-color="#a4ffff"/><stop offset="1" stop-color="#19b9ff"/></linearGradient><linearGradient id="fireGrad" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff3a0"/><stop offset=".4" stop-color="#ffb000"/><stop offset="1" stop-color="#ff3b1a"/></linearGradient><linearGradient id="frostGrad" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset=".5" stop-color="#9fe8ff"/><stop offset="1" stop-color="#3a7bff"/></linearGradient><linearGradient id="katGrad" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#fff"/><stop offset=".55" stop-color="#ffd9ec"/><stop offset="1" stop-color="#ff9ac8"/></linearGradient><filter id="blurG"><feGaussianBlur stdDeviation="4"/></filter></defs>';
+ const S={
+  dual:blade(-28)+blade(28),
+  sword:blade(0),
+  greatblade:'<g><path d="M110 6 L128 24 L133 98 L110 116 L87 98 L92 24 Z" fill="url(#goldGrad)" stroke="#fff3c4" stroke-width="2"/><path d="M110 24 L110 108" stroke="#fff" opacity=".75" stroke-width="3"/><path d="M122 50 l6 0 M92 70 l6 0 M122 86 l6 0" stroke="#d98a10" stroke-width="5"/><path d="M68 100 L152 100 L144 114 L76 114 Z" fill="#8a5a12" stroke="#2a1608" stroke-width="2"/><circle cx="110" cy="107" r="6" fill="#ff3b3b" stroke="#fff" stroke-width="1.5"/><rect x="101" y="114" width="18" height="30" rx="4" fill="#3a2418"/><circle cx="110" cy="148" r="8" fill="#e8a21a" stroke="#2a1608" stroke-width="2"/></g>',
+  energy:'<g><rect x="94" y="8" width="32" height="96" rx="16" fill="#c084fc" opacity=".6" filter="url(#blurG)"/><rect x="101" y="12" width="18" height="92" rx="9" fill="url(#energyGrad)" stroke="#fff" stroke-width="2"/><rect x="108" y="16" width="4" height="84" rx="2" fill="#fff"/><g fill="none" stroke="#d6f6ff" stroke-width="2" opacity=".85"><ellipse cx="110" cy="38" rx="19" ry="5"/><ellipse cx="110" cy="62" rx="19" ry="5"/><ellipse cx="110" cy="86" rx="19" ry="5"/></g><rect x="82" y="103" width="56" height="9" rx="3" fill="#5b6bff" stroke="#1a1f4a" stroke-width="2"/><rect x="103" y="112" width="14" height="32" rx="3" fill="#2b2f4a"/><circle cx="110" cy="149" r="7" fill="#4df0ff"/></g>',
+  katana:'<g transform="rotate(9 110 80)"><path d="M114 6 Q126 56 106 104 L98 104 Q114 58 108 14 Z" fill="url(#katGrad)" stroke="#fff" stroke-width="1.5"/><path d="M111 20 Q120 58 103 100" stroke="#ff7ab8" stroke-width="2" fill="none"/><ellipse cx="102" cy="107" rx="18" ry="5" fill="#d4af37" stroke="#3a2a08" stroke-width="2"/><rect x="97" y="110" width="11" height="36" rx="3" fill="#1a1a24"/><path d="M97 118 L108 124 M97 128 L108 134 M97 138 L108 144" stroke="#c0213c" stroke-width="3"/><circle cx="102" cy="150" r="5" fill="#c0213c"/></g>',
+  flame:'<g><path d="M110 2 Q122 24 116 40 Q132 30 127 58 L129 100 L110 116 L91 100 L93 58 Q88 30 104 40 Q98 24 110 2 Z" fill="url(#fireGrad)" stroke="#fff3a0" stroke-width="2"/><path d="M110 32 Q119 62 110 106 Q101 62 110 32 Z" fill="#fff3a0" opacity=".85"/><path d="M78 102 L142 102 L136 114 L84 114 Z" fill="#8a1c0c" stroke="#2a0a06" stroke-width="2"/><path d="M80 100 l-6 -12 l12 6 Z M140 100 l6 -12 l-12 6 Z" fill="#ffb000"/><rect x="102" y="114" width="16" height="30" rx="4" fill="#4a1410"/><circle cx="110" cy="148" r="7" fill="#ff7a2f" stroke="#2a0a06" stroke-width="2"/></g>',
+  frost:'<g><path d="M110 4 L125 30 L122 98 L110 116 L98 98 L95 30 Z" fill="url(#frostGrad)" stroke="#fff" stroke-width="2"/><path d="M110 12 L110 108" stroke="#fff" stroke-width="3" opacity=".8"/><path d="M96 44 L80 36 L96 60 Z M124 62 L142 52 L124 80 Z M97 78 L82 76 L97 92 Z" fill="#e8fbff" stroke="#7ad7ff" stroke-width="1.5"/><path d="M80 102 L140 102 L134 114 L86 114 Z" fill="#9ad8ff" stroke="#17395e" stroke-width="2"/><path d="M82 100 l-6 -14 l12 8 Z M138 100 l6 -14 l-12 8 Z" fill="#e8fbff"/><rect x="102" y="114" width="16" height="30" rx="4" fill="#27406a"/><circle cx="110" cy="148" r="7" fill="#bfefff" stroke="#17395e" stroke-width="2"/></g>'
+ };
+ return `<svg viewBox="0 0 220 160" role="img" aria-label="${WEAPONS[id].name}">${defs}${S[id]||S.sword}</svg>`;
 };
 function renderWeapon(){
  const w=currentWeapon(),idx=weaponOrder.indexOf(selectedWeapon);
@@ -1249,7 +1381,7 @@ const weaponIdx=()=>Object.keys(WEAPONS).indexOf(selectedWeapon);
 let last=performance.now();
 function loop(now){
  requestAnimationFrame(loop);const dt=(now-last)/1000;last=now;
- update(dt);camUpdate(Math.min(dt,.05));render(now/1000);floatTexts();if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera);
+ update(dt);camUpdate(Math.min(dt,.05));render(now/1000);pUpdate(Math.min(.05,dt));floatTexts();if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera);
 }
 requestAnimationFrame(loop);
 })();
