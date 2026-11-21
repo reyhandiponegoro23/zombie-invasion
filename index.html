@@ -220,6 +220,50 @@ const ZDEF={
  toxic:{hp:155,speed:2.75,dmg:17,skin:'#75f04b',shirt:'#285d35',scale:1.18,kbRes:.2},
  phantom:{hp:135,speed:3.65,dmg:23,skin:'#65dfff',shirt:'#293d80',scale:1.05,kbRes:.35},
  boss:{hp:780,speed:2.05,dmg:30,skin:'#ff5a5a',shirt:'#2b2b4a',scale:2.4,kbRes:.85}};
+// ===== 6 bos berbeda: tampilan, statistik, dan kemampuan khusus masing-masing =====
+const BOSSES=[
+ {name:'Raja Zombie',tip:'memanggil pasukan zombie',skin:'#ff5a5a',shirt:'#2b2b4a',crown:'#ffd23f',scale:2.4,hp:1,speed:1,dmg:1,ab:null,sum:10},
+ {name:'Raksasa Batu',tip:'menghantam tanah — jauhi lingkaran merah!',skin:'#c9a27a',shirt:'#4a3b2e',crown:'#a8a8b8',scale:3.1,hp:1.4,speed:.72,dmg:1.2,ab:'quake',cd:5,wu:.9,r:7.5},
+ {name:'Penerjang Merah',tip:'menyeruduk lurus ke arahmu — hindari dengan dash!',skin:'#ff4fa3',shirt:'#4a1a3a',crown:'#ff4d4d',scale:2.2,hp:.95,speed:1.05,dmg:1.1,ab:'charge',cd:5.5,wu:.8},
+ {name:'Ratu Racun',tip:'menyebar racun dan memanggil pelari',skin:'#75f04b',shirt:'#1d4a2a',crown:'#b9ff7a',scale:2.3,hp:1,speed:1,dmg:.9,ab:'toxic',cd:5,wu:.8,r:7,sum:14},
+ {name:'Hantu Biru',tip:'berpindah tempat dengan cepat',skin:'#65dfff',shirt:'#1a2a66',crown:'#d6f6ff',scale:2.1,hp:.9,speed:1.45,dmg:1.1,ab:'blink',cd:4.5,wu:.55},
+ {name:'Raja Api',tip:'ledakan api besar — makin ganas saat HP rendah',skin:'#ff7a2f',shirt:'#5a1010',crown:'#ffe14d',scale:2.7,hp:1.2,speed:1.1,dmg:1.25,ab:'fire',cd:5,wu:.9,r:8.5}
+];
+// Level mode: tiap level punya bos berbeda (2 bos per level); Infinity: berganti tiap 5 wave.
+const bossIndex=n=>((CFG.mode==='level'?(CFG.level-1)*2:0)+Math.floor(n/5)-1+BOSSES.length*50)%BOSSES.length;
+function setupBoss(z,wave){
+ const bi=bossIndex(wave),B=BOSSES[bi],base=ZDEF.boss;
+ // Hanya ada satu bos pada satu waktu, jadi data tampilannya cukup disimpan di ZDEF.boss.
+ base.skin=B.skin;base.shirt=B.shirt;base.scale=B.scale;base.speed=2.05*B.speed;base.dmg=30*B.dmg;
+ z.bi=bi;z.hp*=B.hp;z.maxHp=z.hp;z.sum=B.sum||1e9;z.abT=3.5;z.abW=0;z.chg=0;z.busy=false;
+ toast('BOS: '+B.name+' — '+B.tip);
+}
+function bossAbility(z,P,dt,dx,dz,dist){
+ const B=BOSSES[z.bi||0],d=ZDEF.boss;z.busy=false;if(!B.ab)return;
+ const lim=HALF-1.5,enr=z.hp<z.maxHp*.4,hit=(r,m)=>{if(dist<r)hurtPlayer(d.dmg*z.dm*m,z.x,z.z)};
+ if(z.chg>0){
+  z.chg-=dt;z.busy=true;z.x=clampN(z.x+z.cx*16*dt,-lim,lim);z.z=clampN(z.z+z.cz*16*dt,-lim,lim);z.walk+=dt*12;
+  if(Math.hypot(P.x-z.x,P.z-z.z)<1.5*d.scale){hurtPlayer(d.dmg*z.dm*1.3,z.x,z.z);z.chg=0;pushFx(z.x,z.z,4,'#ff4fa3');G.shake=Math.max(G.shake,.8)}
+  return}
+ if(z.abW>0){
+  z.abW-=dt;z.busy=true;
+  if(z.abW<=0){
+   if(B.ab==='charge'){z.cx=dx/dist;z.cz=dz/dist;z.chg=.8}
+   else if(B.ab==='quake'){pushFx(z.x,z.z,B.r,'#c98b4b');pushFx(z.x,z.z,B.r*.55,'#ffd23f');G.shake=Math.max(G.shake,1.2);hit(B.r,1.4);AU.play('big')}
+   else if(B.ab==='toxic'){pushFx(z.x,z.z,B.r,'#75f04b');G.shake=Math.max(G.shake,.6);hit(B.r,1);for(let q=0;q<2;q++)spawnOne('runner',z.x+(q?2.5:-2.5),z.z+2,waveMul(G.room+1,'runner'));AU.play('big')}
+   else if(B.ab==='blink'){pushFx(z.x,z.z,4,'#65dfff');const a=Math.random()*6.28;z.x=clampN(P.x+Math.sin(a)*3,-lim,lim);z.z=clampN(P.z+Math.cos(a)*3,-lim,lim);pushFx(z.x,z.z,4,'#d6f6ff');z.atkCd=0;z.vx=z.vz=0;G.shake=Math.max(G.shake,.4)}
+   else if(B.ab==='fire'){pushFx(z.x,z.z,B.r,'#ff7a2f');pushFx(z.x,z.z,B.r*.6,'#ffe14d');G.shake=Math.max(G.shake,1.1);hit(B.r,1.3);AU.play('big')}
+  }
+  return}
+ z.abT-=dt;
+ if(z.abT<=0&&dist<26){
+  z.abT=B.cd*(enr?.65:1);z.abW=B.wu;z.busy=true;
+  // peringatan: lingkaran merah di area serangan
+  if(B.ab==='quake'||B.ab==='toxic'||B.ab==='fire')pushFx(z.x,z.z,B.r,'#ff4d4d');
+  else if(B.ab==='blink')pushFx(z.x,z.z,3,'#65dfff');
+  else if(B.ab==='charge')pushFx(P.x,P.z,2.5,'#ff4d4d');
+ }
+}
 const ROOM_CFG=[['normal','normal','normal'],['normal','normal','normal','runner','runner'],['normal','normal','runner','runner','tank','tank']];
 const THEMES=[
  {a:'#2a2f48',b:'#272b43',wall:'#4a5fd0',bg:'#06102e'},
@@ -250,7 +294,7 @@ const PRICE={sword:0,dual:150,greatblade:300,energy:450,katana:200,flame:500,fro
 const DIFF={easy:{name:'Mudah',hp:.75,dm:.7,count:.75,coin:.7,sup:1},normal:{name:'Normal',hp:1,dm:1,count:1,coin:1,sup:.9},hard:{name:'Sulit',hp:1.35,dm:1.3,count:1.2,coin:1.5,sup:.8},nightmare:{name:'Neraka',hp:1.8,dm:1.7,count:1.4,coin:2.2,sup:.7}};
 // Bar super terisi jauh lebih lambat di semua mode (dulu +5 per pukulan); makin sulit makin lambat.
 const SUP_HIT=1.1,SUP_HURT=2.5;
-const LEVEL_WAVES=[5,10,15,20,30];
+const LEVEL_WAVES=[5,6,7,8,10]; // tiap level pendek (5–10 wave), kesulitan naik lewat HP, damage, kecepatan, dan jenis zombie
 const SAVE_KEY='zi_save_v1';
 const SAVE=(()=>{let d={};try{d=JSON.parse(localStorage.getItem(SAVE_KEY)||'{}')}catch(e){}return Object.assign({coins:250,owned:['sword'],weapon:'sword',best:0,lvlDone:0,abOwned:['whirl'],ability:'whirl',cfg:{mode:'infinity',level:1,diff:'normal'}},d)})();
 const save=()=>{try{localStorage.setItem(SAVE_KEY,JSON.stringify(SAVE))}catch(e){}};
@@ -324,21 +368,22 @@ const pushText=(x,y,z,text,color)=>{const t=G.texts.find(s=>!s.active)||G.texts[
 const pushFx=(x,z,max,color)=>{const f=G.fx.find(s=>!s.active)||G.fx[0];Object.assign(f,{active:true,x,z,t:0,max,color})};
 const pushSlash=(x,z,ry,kind,sc)=>{const s=G.slashes.find(q=>!q.active)||G.slashes[0];Object.assign(s,{active:true,x,z,ry,t:0,kind,sc})};
 const pushGhost=(x,z,ry)=>{const g=G.ghosts.find(q=>!q.active)||G.ghosts[0];Object.assign(g,{active:true,x,z,ry,t:0})};let ghostCd=0;
-function waveList(n){
+function waveList(n,bonus){
+ const m=n+(bonus||0);
  // Setiap wave berisi 20–30 zombie; wave bos tetap termasuk dalam jumlah ini.
  const count=20+((n*7)%11),types=['normal','runner'];
- if(n>=3)types.push('tank');
- if(n>=10)types.push('brute');
- if(n>=20)types.push('toxic');
- if(n>=30)types.push('phantom');
+ if(m>=3)types.push('tank');
+ if(m>=10)types.push('brute');
+ if(m>=20)types.push('toxic');
+ if(m>=30)types.push('phantom');
  const l=[];
  for(let i=0;i<count;i++){
   if(n%5===0&&i===0){l.push('boss');continue}
   const r=Math.random();
-  if(n>=30&&r<.10)l.push('phantom');
-  else if(n>=20&&r<.22)l.push('toxic');
-  else if(n>=10&&r<.34)l.push('brute');
-  else if(n>=3&&r<.48)l.push('tank');
+  if(m>=30&&r<.10)l.push('phantom');
+  else if(m>=20&&r<.22)l.push('toxic');
+  else if(m>=10&&r<.34)l.push('brute');
+  else if(m>=3&&r<.48)l.push('tank');
   else if(r<.72)l.push('runner');
   else l.push('normal');
  }
@@ -349,12 +394,13 @@ function scaleList(l){const n=Math.max(1,Math.min(26,Math.round(l.length*DIFF[CF
 function spawnOne(type,x,zz,mu){const z=G.zombies.find(s=>!s.active);if(!z)return;const d=ZDEF[type];Object.assign(z,{active:true,dead:false,type,x,z:zz,vx:0,vz:0,hp:d.hp*mu.hp,maxHp:d.hp*mu.hp,dm:mu.dm,sm:mu.sm,sum:6,flash:0,stun:0,atkCd:1,wind:0,delay:.6,dying:0,pop:0,freeze:0,burn:0,burnT:0,burnM:1})}
 function spawnRoom(){
  G.zombies.forEach(z=>z.active=false);G.cleared=false;G.waveBreak=0;
- scaleList(waveList(G.room+1)).forEach(type=>{
+ scaleList(waveList(G.room+1,CFG.mode==='level'?(CFG.level-1)*4:0)).forEach(type=>{
   const z=G.zombies.find(s=>!s.active);if(!z)return;
   const d=ZDEF[type],mu=waveMul(G.room+1,type),side=Math.floor(Math.random()*4),edge=25,offset=(Math.random()-.5)*48;
   const x=side===0?-edge:side===1?edge:offset;
   const zz=side===2?-edge:side===3?edge:offset;
-  Object.assign(z,{active:true,dead:false,type,x,z:zz,vx:0,vz:0,hp:d.hp*mu.hp,maxHp:d.hp*mu.hp,dm:mu.dm,sm:mu.sm,sum:6,flash:0,stun:0,atkCd:1,wind:0,delay:.9,dying:0,pop:0,freeze:0,burn:0,burnT:0,burnM:1});
+  Object.assign(z,{active:true,dead:false,type,x,z:zz,vx:0,vz:0,hp:d.hp*mu.hp,maxHp:d.hp*mu.hp,dm:mu.dm,sm:mu.sm,sum:6,flash:0,stun:0,atkCd:1,wind:0,delay:.9,dying:0,pop:0,freeze:0,burn:0,burnT:0,burnM:1,busy:false,chg:0,abW:0});
+  if(type==='boss')setupBoss(z,G.room+1);
  });
 }
 function startRun(){
@@ -436,10 +482,11 @@ function update(dtRaw){
   if(z.dead){z.dying-=dt;if(z.dying<=0)z.active=false;continue}
   const d=ZDEF[z.type];
   z.freeze=Math.max(0,(z.freeze||0)-dt);if(z.burn>0){z.burn-=dt;z.burnT-=dt;if(z.burnT<=0){z.burnT=.5;hitZombie(z,7*z.burnM,0,z.x,z.z,0,1);if(z.dead)continue}}
-  z.pop=Math.min(1,z.pop+dt*3);z.flash=Math.max(0,z.flash-dt*4);z.delay-=dt;z.stun-=dt;z.atkCd-=dt;if(z.type==='boss'&&z.delay<=0&&z.freeze<=0){z.sum-=dt;if(z.sum<=0){z.sum=10;for(let q=0;q<2;q++)spawnOne('normal',z.x+(q?2:-2),z.z+1.5,waveMul(G.room+1,'normal'))}}
+  z.pop=Math.min(1,z.pop+dt*3);z.flash=Math.max(0,z.flash-dt*4);z.delay-=dt;z.stun-=dt;z.atkCd-=dt;if(z.type==='boss'&&z.delay<=0&&z.freeze<=0&&z.sum<1e8){z.sum-=dt;if(z.sum<=0){z.sum=(BOSSES[z.bi||0].sum||10);for(let q=0;q<2;q++)spawnOne('normal',z.x+(q?2:-2),z.z+1.5,waveMul(G.room+1,'normal'))}}
   const dk=Math.exp(-8*dt);z.vx*=dk;z.vz*=dk;z.x+=z.vx*dt;z.z+=z.vz*dt;
   const dx=P.x-z.x,dz=P.z-z.z,dist=Math.hypot(dx,dz)||1,reach=1.25*d.scale;
-  if(z.stun<=0&&z.delay<=0&&z.freeze<=0){
+  z.busy=false;if(z.type==='boss'&&z.delay<=0&&z.freeze<=0)bossAbility(z,P,dt,dx,dz,dist);
+  if(z.stun<=0&&z.delay<=0&&z.freeze<=0&&!z.busy){
    if(z.wind>0){z.wind-=dt;if(z.wind<=0){if(z.type==='boss'){pushFx(z.x,z.z,reach*1.4,'#ff4d4d');G.shake=Math.max(G.shake,.6)}if(dist<reach*1.4)hurtPlayer(d.dmg*z.dm,z.x,z.z)}}
    else if(dist>reach){z.x+=dx/dist*d.speed*z.sm*dt;z.z+=dz/dist*d.speed*z.sm*dt;z.walk+=dt*d.speed*z.sm}
    else if(z.atkCd<=0){z.wind=z.type==='boss'?.8:.45;z.atkCd=z.type==='boss'?2.2:1.3}
@@ -818,7 +865,7 @@ function render(t){lobbyAnim(t);
  pl.g.visible=cam.dist>1.85&&!(P.inv>0&&P.dashT<=0&&Math.floor(t*20)%2===0);
  zs.forEach((o,i)=>{
   const z=G.zombies[i];if(!z.active){o.g.visible=false;return}
-  const d=ZDEF[z.type];o.g.visible=true;o.crown.visible=z.type==='boss';
+  const d=ZDEF[z.type];o.g.visible=true;o.crown.visible=z.type==='boss';if(z.type==='boss'&&o.crown.material)o.crown.material.color.set(BOSSES[z.bi||0].crown);
   o.g.scale.setScalar(d.scale*(z.dead?Math.min(1,Math.max(0,z.dying/.35)):.4+.6*z.pop));
   o.g.position.set(z.x,0,z.z);o.g.rotation.y=Math.atan2(P.x-z.x,P.z-z.z);
   o.m.skin.color.set(d.skin).lerp(WHITE,z.flash);o.m.shirt.color.set(d.shirt).lerp(WHITE,z.flash);
@@ -926,7 +973,7 @@ function renderMission(){
  seg('diffSeg',Object.keys(DIFF).map(k=>[k,DIFF[k].name]),CFG.diff,v=>{CFG.diff=v});
  const D=DIFF[CFG.diff];
  const LV=CFG.mode==='level'?CFG.level-1:0;
- $('missionSum').textContent=(CFG.mode==='level'?'Level '+CFG.level+': selesaikan '+LEVEL_WAVES[CFG.level-1]+' wave (bos tiap 5 wave). Level dikerjakan berurutan \u2014 menang untuk membuka level berikutnya. Makin tinggi level, zombie makin kuat (HP \u00d7'+(1+LV*.3).toFixed(2)+', damage \u00d7'+(1+LV*.12).toFixed(2)+').':'Infinity: bertahan sebanyak mungkin wave tanpa batas.')+' Kesulitan '+D.name+': zombie '+D.hp+'\u00d7 HP, '+D.dm+'\u00d7 damage, hadiah koin '+D.coin+'\u00d7, bar super terisi '+Math.round(D.sup*100)+'% dari kecepatan dasar. Rekor wave: '+(SAVE.best||0)+'.';
+ $('missionSum').textContent=(CFG.mode==='level'?'Level '+CFG.level+': selesaikan '+LEVEL_WAVES[CFG.level-1]+' wave (bos tiap 5 wave, tiap level bosnya berbeda). Level dikerjakan berurutan \u2014 menang untuk membuka level berikutnya. Makin tinggi level, zombie makin kuat (HP \u00d7'+(1+LV*.3).toFixed(2)+', damage \u00d7'+(1+LV*.12).toFixed(2)+', kecepatan naik, dan jenis zombie kuat muncul lebih awal).':'Infinity: bertahan sebanyak mungkin wave tanpa batas.')+' Kesulitan '+D.name+': zombie '+D.hp+'\u00d7 HP, '+D.dm+'\u00d7 damage, hadiah koin '+D.coin+'\u00d7, bar super terisi '+Math.round(D.sup*100)+'% dari kecepatan dasar. Rekor wave: '+(SAVE.best||0)+'.';
 }
 function setPhase(p){
  G.phase=p;
@@ -980,7 +1027,7 @@ function hud(){
  const P=G.P,full=P.sup>=100;
  $('hp').firstChild.style.width=P.hp/P.maxHp*100+'%';$('hp').lastChild.textContent=`HP ${Math.ceil(P.hp)}/${P.maxHp}`;
  $('sp').firstChild.style.width=P.sup+'%';$('sp').lastChild.textContent=full?SUPERS[selectedWeapon].name.toUpperCase()+' SIAP! (E)':'SUPER';$('loadoutHud').textContent=currentCharacter().name+' \u00b7 '+currentWeapon().name+' \u00b7 '+SPECIALS[G.special].name;$('bU').textContent=SUPERS[selectedWeapon].name;$('bU').style.fontSize='10px';$('sp').classList.toggle('full',full);
- $('rm').textContent='Wave '+(G.room+1)+(CFG.mode==='level'?'/'+LEVEL_WAVES[CFG.level-1]:'')+((G.room+1)%5===0?' — BOS':'');
+ $('rm').textContent='Wave '+(G.room+1)+(CFG.mode==='level'?'/'+LEVEL_WAVES[CFG.level-1]:'')+((G.room+1)%5===0?' \u2014 BOS: '+BOSSES[bossIndex(G.room+1)].name:'');
  const bz=G.zombies.find(z=>z.active&&!z.dead&&z.type==='boss'),bb=$('bb');bb.style.display=bz?'block':'none';if(bz)bb.firstChild.style.width=Math.max(0,bz.hp/bz.maxHp*100)+'%';$('rs').textContent=G.cleared?'Wave berikutnya: '+Math.ceil(G.waveBreak)+' detik':'Kalahkan semua zombie!';
  const tt=$('toast');tt.style.display=G.toast.t>0?'block':'none';tt.textContent=G.toast.text;
  const SPd=SPECIALS[G.special],sF=Math.max(0,Math.min(1,P.spCd/(SPd.cd*P.cd)));$('cdS').childNodes[1].textContent=SPd.name;$('bS').textContent=SPd.name;$('bS').style.fontSize='11px';
