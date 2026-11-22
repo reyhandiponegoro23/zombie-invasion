@@ -1007,7 +1007,7 @@ function superFxTick(dt){
    if(!S.stomped){S.stomped=true;S.x=P.x;S.z=P.z;G.shake=Math.max(G.shake,1.8);AU.play('flameSuper');pushFx(S.x,S.z,8,'#ff7a2f');pushFx(S.x,S.z,4,'#ffd23f');burst(S.x,.4,S.z,70,FIRE_C,9,6,.55,.8,-2)}
    const tt=S.t-.2;S.r=Math.min(SFX_R,tt*SFX_SPD);
    for(const z of alive()){if(S.done.has(z))continue;const d=Math.hypot(z.x-S.x,z.z-S.z);if(d<=S.r){S.done.add(z);
-    hitZombie(z,80*S.m,9,S.x,S.z,.7,2);if(!z.dead){z.burn=1e9;z.burnT=.2;z.burnM=S.m;burst(z.x,1.2,z.z,26,FIRE_C,5,5,.5,.8,-3)}}}
+    hitZombie(z,125*S.m,9,S.x,S.z,.7,2);if(!z.dead){z.burn=1e9;z.burnT=.2;z.burnM=S.m;burst(z.x,1.2,z.z,26,FIRE_C,5,5,.5,.8,-3)}}}
    if(S.r<SFX_R)for(let k=0;k<34;k++){const a=R()*6.283,rr=S.r-R()*3;emitP(S.x+Math.cos(a)*rr,.3+R()*.9,S.z+Math.sin(a)*rr,Math.cos(a)*1.5,2.5+R()*4,Math.sin(a)*1.5,.6+R()*.5,.55+R()*.5,sfxCol[(R()*4)|0],0)}
   }
  }
