@@ -177,6 +177,7 @@ textarea.ain{resize:none;font:600 12px monospace}
 .cut-bar.t{top:0;transform:translateY(-100%)}.cut-bar.b{bottom:0;transform:translateY(100%)}
 #cut.on .cut-bar{transform:none}
 .cut-cap{position:absolute;left:0;right:0;bottom:15vh;text-align:center;font-weight:900;font-size:clamp(18px,3.4vw,34px);color:#fff;text-shadow:0 3px 0 #000,0 0 18px #000;letter-spacing:.04em;padding:0 14px}
+#cutSkip{position:absolute;right:14px;top:calc(13vh + 10px);pointer-events:auto;border:2px solid rgba(255,255,255,.7);background:rgba(0,0,0,.45);color:#fff;font-weight:800;font-size:14px;padding:6px 12px;border-radius:10px;cursor:pointer}
 #cutFade{position:fixed;inset:0;z-index:56;background:#000;opacity:0;pointer-events:none;transition:opacity 1s}
 #cutFade.fade{opacity:1}
 #cutTitle{position:fixed;inset:0;z-index:57;display:grid;place-content:center;gap:8px;text-align:center;pointer-events:none;opacity:0;padding:0 14px}
@@ -229,7 +230,7 @@ textarea.ain{resize:none;font:600 12px monospace}
 <div id="vig"></div>
 <div id="awk"><div class="awk-dim"></div><div class="awk-tint"></div><div class="awk-rays"></div><div class="awk-bar t"></div><div class="awk-bar b"></div><div class="awk-band"><span class="awk-sub">A W A K E N I N G</span><b id="awkName"></b></div></div>
 <div id="awkFlash"></div>
-<div id="cut"><div class="cut-bar t"></div><div class="cut-bar b"></div><div class="cut-cap" id="cutCap"></div></div>
+<div id="cut"><div class="cut-bar t"></div><div class="cut-bar b"></div><div class="cut-cap" id="cutCap"></div><button id="cutSkip">Lewati ▶</button></div>
 <div id="cutFade"></div>
 <div id="cutTitle"><small>LEVEL BARU TERBUKA</small><b>Pulau Terdampar</b><span></span></div>
 <div class="panel" id="menu"><div class="card">
@@ -522,7 +523,7 @@ function spawnRoom(){
  });
 }
 function startRun(){
- setWorld(curWorld());G.cut=null;$('cut').classList.remove('on');pl.g.visible=true;
+ setWorld(curWorld());G.cut=null;$('cut').classList.remove('on');pl.g.visible=true;pl.g.rotation.x=0;
  G.P=mkP();G.special=abilityIdx();G.room=0;G.kills=0;G.runCoins=0;G.time=0;G.shake=0;G.ups=[];
  G.texts.forEach(t=>t.active=false);G.fx.forEach(f=>f.active=false);G.beams.forEach(b=>b.active=false);G.awk=null;G.sfx=null;$('awk').classList.remove('on');
  G.req={attack:false,dash:false,special:false,super:false};
@@ -1077,112 +1078,159 @@ function superFxPose(t){
  }
 }
 
-// ===== Dunia lain: dermaga tepi laut (Level 10) & pulau besar (Level 11+) =====
-const WORLD_COL={city:{bg:'#06102e',near:48,far:145,exp:.92,sun:0xe6edff},sea:{bg:'#f0a56e',near:55,far:175,exp:1.0,sun:0xffd2a6},island:{bg:'#8fdcff',near:60,far:180,exp:1.06,sun:0xfff4dd}};
+// ===== Dunia lain: kota di tepi laut (Level 10), laut lepas, dan pulau besar (Level 11+) =====
+const WORLD_COL={city:{bg:'#06102e',near:48,far:145,exp:.92,sun:0xe6edff},sea:{bg:'#f0a56e',near:55,far:175,exp:1.0,sun:0xffd2a6},open:{bg:'#e08a62',near:40,far:170,exp:1.0,sun:0xffc7a0},island:{bg:'#8fdcff',near:60,far:180,exp:1.06,sun:0xfff4dd}};
 let curW='city';
+const SEA_X=34; // di dunia 'sea', kota dipotong di x=34 dan di sebelah timur ada laut
 const curWorld=()=>CFG.mode==='level'?(CFG.level>=11?'island':CFG.level===10?'sea':'city'):'city';
-const waterGrp=new THREE.Group(),seaGrp=new THREE.Group(),islGrp=new THREE.Group();
-[waterGrp,seaGrp,islGrp].forEach(g=>{g.visible=false;scene.add(g)});
+const waterGrp=new THREE.Group(),seaGrp=new THREE.Group(),islGrp=new THREE.Group(),openGrp=new THREE.Group();
+[waterGrp,seaGrp,islGrp,openGrp].forEach(g=>{g.visible=false;scene.add(g)});
+cityObjs.forEach(o=>{o.userData=o.userData||{};o.userData.ox=o.position.x;o.userData.sx=o.scale.x});
+function cityClip(on){cityObjs.forEach(o=>{const u=o.userData;
+ if(!on){o.position.x=u.ox;o.scale.x=u.sx;o.visible=true;return}
+ if(o.isMesh&&o.geometry&&o.geometry.type==='BoxGeometry'){const l=u.ox-u.sx/2,r=u.ox+u.sx/2;
+  if(r<=SEA_X){o.visible=true;o.position.x=u.ox;o.scale.x=u.sx}
+  else if(l>=SEA_X-.01)o.visible=false;
+  else{o.visible=true;o.scale.x=SEA_X-l;o.position.x=(l+SEA_X)/2}}
+ else o.visible=u.ox<SEA_X-1})}
 const sea=new THREE.Mesh(new THREE.PlaneGeometry(900,900),new THREE.MeshPhongMaterial({color:'#0f6bb0',shininess:90,specular:0x88bbff}));
 sea.rotation.x=-Math.PI/2;sea.position.y=-1.4;waterGrp.add(sea);
 const foam=[],foamM=addM('#ffffff',.34);
 for(let i=0;i<46;i++){const f=new THREE.Mesh(BOX,foamM),a=i*2.399,r=38+((i*37)%80);f.userData={a,r};f.scale.set(3+(i%4)*2,.04,.5);f.position.set(Math.cos(a)*r,-1.36,Math.sin(a)*r);waterGrp.add(f);foam.push(f)}
-const sun=new THREE.Mesh(new THREE.SphereGeometry(14,16,12),new THREE.MeshBasicMaterial({color:'#ffe2a8',fog:false}));sun.position.set(-70,24,-150);sun.visible=false;scene.add(sun);
-const W_woodM=mat('#9a7448'),W_woodD=mat('#6b4c2c'),W_stoneM=mat('#7e8aa0'),W_whiteM=mat('#f2f4f8');
+const sun=new THREE.Mesh(new THREE.SphereGeometry(14,16,12),new THREE.MeshBasicMaterial({color:'#ffe2a8',fog:false}));sun.position.set(90,20,-120);sun.visible=false;scene.add(sun);
+const W_stone=mat('#8d97a8'),W_dark=mat('#3a4254'),W_wood=mat('#9a7448'),W_woodD=mat('#6b4c2c'),W_white=mat('#f2f4f8');
 const boats=[];
-// -- dermaga kayu besar, laut di tiga sisi, pelabuhan (kontainer) di utara --
-box(W_woodM,[0,-.25,0],[HALF*2+8,.5,HALF*2+8],seaGrp);
-for(let i=-7;i<=7;i++)box(W_woodD,[i*4.4,.01,0],[.14,.03,HALF*2+8],seaGrp);
-for(let i=-5;i<=5;i++)for(const sd of[-1,1]){box(W_woodD,[i*6.2,-.9,sd*(HALF+3.6)],[.7,2.4,.7],seaGrp);box(W_woodD,[sd*(HALF+3.6),-.9,i*6.2],[.7,2.4,.7],seaGrp)}
-for(let i=-4;i<=4;i++){const lm=new THREE.MeshBasicMaterial({color:'#fff2ad'});for(const sd of[-1,1]){box(W_woodD,[sd*(HALF+3.4),.6,i*7],[.35,1.2,.35],seaGrp);box(lm,[sd*(HALF+3.4),1.35,i*7],[.5,.3,.5],seaGrp)}}
-const conC=['#c0392b','#2e86c1','#d4ac0d','#27ae60','#8e44ad'];
-for(let i=0;i<9;i++){box(mat(conC[i%5]),[-30+i*7.5,1.3,-HALF-1.3],[6.4,2.6,2.6],seaGrp);if(i%3===0)box(mat(conC[(i+2)%5]),[-30+i*7.5,3.9,-HALF-1.3],[6.4,2.6,2.6],seaGrp)}
-for(let i=0;i<4;i++)box(mat('#5d6d7e'),[-26+i*17,5,-HALF-6],[1.2,10,1.2],seaGrp); // tiang derek
-box(mat('#5d6d7e'),[-9,10,-HALF-6],[52,.9,.9],seaGrp);
-// mercusuar di pulau karang
-{const rk=new THREE.Mesh(new THREE.CylinderGeometry(6,8,2.4,10),mat('#6d7480'));rk.position.set(-52,-.9,-30);seaGrp.add(rk);
- [['#f4f4f4',0],['#d63031',5],['#f4f4f4',10]].forEach(([c,y])=>{const t=new THREE.Mesh(new THREE.CylinderGeometry(2.1-y*.05,2.5-y*.05,5,12),mat(c));t.position.set(-52,3.6+y,-30);seaGrp.add(t)});
- box(new THREE.MeshBasicMaterial({color:'#fff3a0'}),[-52,17.2,-30],[3.2,2,3.2],seaGrp);box(mat('#d63031'),[-52,18.7,-30],[3.8,.8,3.8],seaGrp)}
-function mkBoat(x,z,ry,c){const g=new THREE.Group();g.position.set(x,-1.0,z);g.rotation.y=ry;box(mat(c),[0,0,0],[7,1.2,2.4],g);box(W_whiteM,[-1.2,1.1,0],[2.6,1.2,1.8],g);box(W_woodD,[1.6,2.2,0],[.16,4.2,.16],g);box(W_whiteM,[2.1,2.3,0],[.05,3,1.9],g);seaGrp.add(g);boats.push(g)}
-mkBoat(56,10,.5,'#2e86c1');mkBoat(-62,34,-.4,'#c0392b');mkBoat(30,66,1.2,'#27ae60');mkBoat(-30,80,2,'#d4ac0d');
+// -- tepi laut di sisi timur kota: dinding dermaga beton, tiang tambat, perahu, mercusuar --
+box(W_stone,[SEA_X+.4,-.73,-29],[1,1.5,170],seaGrp);
+box(mat('#a9b3c4'),[SEA_X-.35,.2,-29],[.35,.3,170],seaGrp);
+for(let z=-100;z<=40;z+=9)box(W_dark,[SEA_X-1.2,.42,z],[.5,.6,.5],seaGrp);
+{const rk=new THREE.Mesh(new THREE.CylinderGeometry(6,8,2.4,10),mat('#6d7480'));rk.position.set(78,-.9,-44);seaGrp.add(rk);
+ [['#f4f4f4',0],['#d63031',5],['#f4f4f4',10]].forEach(([c,y])=>{const t=new THREE.Mesh(new THREE.CylinderGeometry(2.1-y*.05,2.5-y*.05,5,12),mat(c));t.position.set(78,3.6+y,-44);seaGrp.add(t)});
+ box(new THREE.MeshBasicMaterial({color:'#fff3a0'}),[78,17.2,-44],[3.2,2,3.2],seaGrp);box(mat('#d63031'),[78,18.7,-44],[3.8,.8,3.8],seaGrp)}
+function mkBoat(x,z,ry,c,grp){const g=new THREE.Group();g.position.set(x,-1.0,z);g.rotation.y=ry;box(mat(c),[0,0,0],[7,1.2,2.4],g);box(W_white,[-1.2,1.1,0],[2.6,1.2,1.8],g);box(W_woodD,[1.6,2.2,0],[.16,4.2,.16],g);box(W_white,[2.1,2.3,0],[.05,3,1.9],g);(grp||seaGrp).add(g);boats.push(g)}
+mkBoat(44,6,Math.PI/2,'#2e86c1');mkBoat(46,-24,Math.PI/2,'#c0392b');mkBoat(52,34,1.9,'#27ae60');mkBoat(64,-6,1.2,'#d4ac0d');mkBoat(60,60,2.4,'#2e86c1');
+// -- laut lepas: rakit kayu tempat karakter terombang-ambing --
+const raft=new THREE.Group();openGrp.add(raft);
+box(W_wood,[0,0,0],[3.6,.3,2.8],raft);for(let i=-1;i<=1;i++)box(W_woodD,[i*1.1,.2,0],[.12,.12,2.8],raft);
+box(mat('#c0392b'),[-1.9,.1,.9],[.9,.9,.9],raft);box(W_white,[2.1,.12,-.6],[.8,.3,.8],raft);
+for(let i=0;i<7;i++){const q=box(W_woodD,[0,0,0],[.9+i%3*.4,.12,.5],openGrp);q.position.set(Math.cos(i*1.3)*(9+i*2.2),-1.28,Math.sin(i*1.3)*(9+i*2.2));q.rotation.y=i}
+{const far=new THREE.Mesh(new THREE.ConeGeometry(18,14,6),mat('#2d5a4a'));far.position.set(-10,4,-120);openGrp.add(far)}
 // -- pulau besar (Lv 11+) --
-const W_sandM=mat('#e7d08e'),W_grassM=mat('#58ad5c'),W_rockM=mat('#7a7f88'),W_trunkM=mat('#8b5a2b'),W_leafM=mat('#2f9a49'),W_leaf2=mat('#3cb55a');
-{const isl=new THREE.Mesh(new THREE.CylinderGeometry(HALF*1.6,HALF*1.75,1.2,28),W_sandM);isl.position.y=-.6;islGrp.add(isl);
- const gr=new THREE.Mesh(new THREE.CylinderGeometry(HALF*1.1,HALF*1.18,.08,28),W_grassM);gr.position.y=.03;islGrp.add(gr);
- const fr=new THREE.Mesh(new THREE.RingGeometry(HALF*1.74,HALF*1.98,40),addM('#ffffff',.4));fr.rotation.x=-Math.PI/2;fr.position.y=-1.3;islGrp.add(fr)}
+const W_sand=mat('#e7d08e'),W_grass=mat('#58ad5c'),W_rock=mat('#7a7f88'),W_trunk=mat('#8b5a2b'),W_leaf=mat('#2f9a49'),W_leaf2=mat('#3cb55a');
+let isleFoam;
+{const isl=new THREE.Mesh(new THREE.CylinderGeometry(HALF*1.6,HALF*1.75,1.2,28),W_sand);isl.position.y=-.6;islGrp.add(isl);
+ const gr=new THREE.Mesh(new THREE.CylinderGeometry(HALF*1.1,HALF*1.18,.08,28),W_grass);gr.position.y=.03;islGrp.add(gr);
+ isleFoam=new THREE.Mesh(new THREE.RingGeometry(HALF*1.74,HALF*1.98,40),addM('#ffffff',.4));isleFoam.rotation.x=-Math.PI/2;isleFoam.position.y=-1.3;islGrp.add(isleFoam)}
 function palm(x,z,sc){const g=new THREE.Group();g.position.set(x,0,z);g.rotation.y=Math.random()*6.28;const lean=.16+Math.random()*.12;
- for(let k=0;k<5;k++)box(W_trunkM,[lean*k*.9*sc,(k+.5)*1.2*sc,0],[.55*sc,1.25*sc,.55*sc],g);
+ for(let k=0;k<5;k++)box(W_trunk,[lean*k*.9*sc,(k+.5)*1.2*sc,0],[.55*sc,1.25*sc,.55*sc],g);
  const top=new THREE.Group();top.position.set(lean*4.5*.9*sc,6.1*sc,0);g.add(top);
- for(let j=0;j<7;j++){const pv=new THREE.Group();pv.rotation.y=j*6.283/7;top.add(pv);const lf=box(j%2?W_leafM:W_leaf2,[0,0,1.35*sc],[.75*sc,.1*sc,2.9*sc],pv);lf.rotation.x=.38}
- box(W_trunkM,[.3*sc,-.3*sc,.2*sc],[.45*sc,.45*sc,.45*sc],top);box(W_trunkM,[-.25*sc,-.35*sc,-.2*sc],[.45*sc,.45*sc,.45*sc],top);
+ for(let j=0;j<7;j++){const pv=new THREE.Group();pv.rotation.y=j*6.283/7;top.add(pv);const lf=box(j%2?W_leaf:W_leaf2,[0,0,1.35*sc],[.75*sc,.1*sc,2.9*sc],pv);lf.rotation.x=.38}
+ box(W_trunk,[.3*sc,-.3*sc,.2*sc],[.45*sc,.45*sc,.45*sc],top);box(W_trunk,[-.25*sc,-.35*sc,-.2*sc],[.45*sc,.45*sc,.45*sc],top);
  islGrp.add(g)}
 for(let i=0;i<16;i++){const a=i*6.283/16+Math.random()*.2,r=44+Math.random()*3;palm(Math.cos(a)*r,Math.sin(a)*r,1+Math.random()*.4)}
 for(let i=0;i<10;i++){const sd=i%2?1:-1,q=-26+(i>>1)*13;palm(sd*(HALF+4+Math.random()*3),q+Math.random()*3,.9+Math.random()*.4)}
-for(let i=0;i<14;i++){const a=Math.random()*6.283,r=HALF+3+Math.random()*10,w=1+Math.random()*2.2;box(W_rockM,[Math.cos(a)*r,w*.3,Math.sin(a)*r],[w,w*.7,w*.9],islGrp).rotation.y=Math.random()*3}
-{const w=new THREE.Group();w.position.set(-40,.2,22);w.rotation.set(0,.6,.28);box(W_woodD,[0,0,0],[10,1.6,3.2],w);box(W_woodM,[0,1.2,0],[8,.8,2.6],w);box(W_woodD,[1,4,0],[.3,7,.3],w).rotation.z=.1;box(W_whiteM,[1.6,4.8,0],[.06,3.4,2.2],w).rotation.z=.1;islGrp.add(w)}
+for(let i=0;i<14;i++){const a=Math.random()*6.283,r=HALF+3+Math.random()*10,w=1+Math.random()*2.2;box(W_rock,[Math.cos(a)*r,w*.3,Math.sin(a)*r],[w,w*.7,w*.9],islGrp).rotation.y=Math.random()*3}
+{const w=new THREE.Group();w.position.set(-40,.2,22);w.rotation.set(0,.6,.28);box(W_woodD,[0,0,0],[10,1.6,3.2],w);box(W_wood,[0,1.2,0],[8,.8,2.6],w);box(W_woodD,[1,4,0],[.3,7,.3],w).rotation.z=.1;box(W_white,[1.6,4.8,0],[.06,3.4,2.2],w).rotation.z=.1;islGrp.add(w)}
 function applyWorldSky(){const c=WORLD_COL[curW];scene.background.set(c.bg);scene.fog.color.set(c.bg);scene.fog.near=c.near;scene.fog.far=c.far;renderer.toneMappingExposure=c.exp;dl.color.set(c.sun)}
-function setWorld(w){curW=w;cityObjs.forEach(o=>o.visible=w==='city');seaGrp.visible=w==='sea';islGrp.visible=w==='island';waterGrp.visible=w!=='city';sun.visible=w!=='city';applyWorldSky()}
-function worldAnim(t){foam.forEach((f,i)=>{const u=f.userData,a=u.a+t*.02;f.position.x=Math.cos(a)*u.r;f.position.z=Math.sin(a)*u.r;f.scale.x=(3+(i%4)*2)*(.8+.2*Math.sin(t*1.5+i))});boats.forEach((b,i)=>{b.position.y=-1.0+Math.sin(t*1.1+i*2)*.14;b.rotation.z=Math.sin(t*.9+i)*.05})}
+function setWorld(w){curW=w;
+ if(w==='city')cityClip(false);else if(w==='sea')cityClip(true);else cityObjs.forEach(o=>o.visible=false);
+ seaGrp.visible=w==='sea';openGrp.visible=w==='open';islGrp.visible=w==='island';waterGrp.visible=w!=='city';sun.visible=w!=='city';applyWorldSky()}
+function worldAnim(t){foam.forEach((f,i)=>{const u=f.userData,a=u.a+t*.02;f.position.x=Math.cos(a)*u.r;f.position.z=Math.sin(a)*u.r;f.scale.x=(3+(i%4)*2)*(.8+.2*Math.sin(t*1.5+i))});
+ boats.forEach((b,i)=>{b.position.y=-1.0+Math.sin(t*1.1+i*2)*.14;b.rotation.z=Math.sin(t*.9+i)*.05});
+ if(curW==='island'){const k=1+.012*Math.sin(t*1.2);isleFoam.scale.set(k,k,1)}}
 
-// ===== Cutscene Level 10: zombie terakhir mendorong karakter ke laut =====
+// ===== Cutscene Level 10: dorongan ke laut -> terombang-ambing di laut lepas -> terdampar di pulau =====
 function startPushCut(P,zz){
- const E=HALF-4,dE=HALF-P.x,dW=HALF+P.x,dS=HALF-P.z,m=Math.min(dE,dW,dS),d=m===dE?[1,0]:m===dW?[-1,0]:[0,1];
- const S=d[0]?[d[0]*E,clampN(P.z,-20,20)]:[clampN(P.x,-20,20),E];
+ const E=HALF-4,d=[1,0],S=[E,clampN(P.z,-20,20)];
  let z=zz;
- if(!z){z=G.zombies.find(q=>!q.active)||G.zombies[0];Object.assign(z,{active:true,dead:false,type:'brute',x:S[0]-d[0]*14,z:S[1]-d[1]*14,vx:0,vz:0,hp:9999,maxHp:9999,dm:1,sm:1,flash:0,stun:0,atkCd:99,wind:0,delay:0,dying:0,pop:1,freeze:0,burn:0,burnT:0,burnM:1,busy:false,chg:0,abW:0})}
+ if(!z){z=G.zombies.find(q=>!q.active)||G.zombies[0];Object.assign(z,{active:true,dead:false,type:'brute',x:S[0]-14,z:S[1],vx:0,vz:0,hp:9999,maxHp:9999,dm:1,sm:1,flash:0,stun:0,atkCd:99,wind:0,delay:0,dying:0,pop:1,freeze:0,burn:0,burnT:0,burnM:1,busy:false,chg:0,abW:0})}
  z.freeze=0;z.burn=0;z.stun=0;z.delay=0;z.vx=z.vz=0;z.wind=0;
- const px=d[0]?0:(P.x>0?-1:1),pz=d[0]?1:0;
- G.cut={t:0,d,S,P0:[P.x,P.z],Z0:[z.x,z.z],ZE:[S[0]-d[0]*2.4,S[1]-d[1]*2.4],z,vx:0,vy:0,vz:0,shoved:false,splashed:false,spin:0,fade:false,shk:0,dist0:cam.dist,cp:[(S[0]+S[0]-d[0]*2.4)/2+px*10,3.4,(S[1]+S[1]-d[1]*2.4)/2+pz*10]};
+ const a=Math.PI/2+.2;
+ G.cut={t:0,stage:0,d,S,P0:[P.x,P.z],Z0:[z.x,z.z],ZE:[S[0]-2.4,S[1]],z,vx:0,vy:0,vz:0,shoved:false,splashed:false,spin:0,fade:false,shk:0,lie:0,dist0:cam.dist,
+  cp:[S[0]-1.2,3.4,S[1]+10],B:[Math.cos(a)*44.5,Math.sin(a)*44.5],ba:a};
  G.req.super=G.req.attack=G.req.dash=G.req.special=false;G.attackHeld=false;P.kx=P.kz=0;P.aiming=false;
  cam.dist=Math.max(cam.dist,6);
  $('hud').style.display='none';$('cutCap').textContent='Tinggal satu zombie tersisa…';$('cut').classList.add('on');
  AU.play('big');
 }
+function cutFade(c,on){if(on&&!c.fade){c.fade=true;$('cutFade').classList.add('fade')}else if(!on&&c.fade){c.fade=false;$('cutFade').classList.remove('fade')}}
 function cutTick(dt){
  const c=G.cut,P=G.P,z=c.z,d=c.d,R=Math.random;c.t+=dt;const t=c.t;
  G.req.super=G.req.attack=G.req.dash=G.req.special=false;c.shk=Math.max(0,c.shk-dt*2);
- if(t<1.1){
-  const e=t/1.1,sm=e*e*(3-2*e),ze=Math.min(1,e*1.15);
-  P.x=c.P0[0]+(c.S[0]-c.P0[0])*sm;P.z=c.P0[1]+(c.S[1]-c.P0[1])*sm;P.moving=true;
-  z.x=c.Z0[0]+(c.ZE[0]-c.Z0[0])*ze;z.z=c.Z0[1]+(c.ZE[1]-c.Z0[1])*ze;z.walk+=dt*11;
-  P.ry=Math.atan2(z.x-P.x,z.z-P.z);
- }else if(!c.shoved){
-  P.moving=false;P.x=c.S[0];P.z=c.S[1];z.x=c.ZE[0];z.z=c.ZE[1];z.wind=1;P.ry=Math.atan2(z.x-P.x,z.z-P.z);c.shk=Math.max(c.shk,.25);
-  if(t>=1.9){c.shoved=true;z.wind=0;c.vx=d[0]*11;c.vz=d[1]*11;c.vy=8;c.shk=1.4;AU.play('shove');$('cutCap').textContent='Dia mendorongmu ke laut!';
-   burst(P.x,1.2,P.z,34,['#ffffff','#e8d9b0','#c9a86a'],6,4,.3,.7,6);pushFx(P.x,P.z,4,'#ffffff')}
- }else{
-  if(!c.splashed){c.vy-=22*dt;P.x+=c.vx*dt;P.z+=c.vz*dt;P.y=(P.y||0)+c.vy*dt;c.spin+=dt*9;
-   emitP(P.x,(P.y||0)+.8,P.z,(R()-.5)*1.5,(R()-.5)*1.5,(R()-.5)*1.5,.5,.22,'#ffffff',0);
-   if(P.y<=-1.35){c.splashed=true;c.t2=t;c.shk=1.2;AU.play('splash');
-    burst(P.x,-1.3,P.z,80,['#ffffff','#bfe9ff','#5ab6ff'],8,10,.42,1.1,14);pushFx(P.x,P.z,6,'#bfe9ff');pushFx(P.x,P.z,3,'#ffffff')}
+ if(c.stage===0){
+  if(t<1.1){
+   const e=t/1.1,sm=e*e*(3-2*e),ze=Math.min(1,e*1.15);
+   P.x=c.P0[0]+(c.S[0]-c.P0[0])*sm;P.z=c.P0[1]+(c.S[1]-c.P0[1])*sm;P.moving=true;
+   z.x=c.Z0[0]+(c.ZE[0]-c.Z0[0])*ze;z.z=c.Z0[1]+(c.ZE[1]-c.Z0[1])*ze;z.walk+=dt*11;
+   P.ry=Math.atan2(z.x-P.x,z.z-P.z);
+  }else if(!c.shoved){
+   P.moving=false;P.x=c.S[0];P.z=c.S[1];z.x=c.ZE[0];z.z=c.ZE[1];z.wind=1;P.ry=Math.atan2(z.x-P.x,z.z-P.z);c.shk=Math.max(c.shk,.25);
+   if(t>=1.9){c.shoved=true;z.wind=0;c.vx=12;c.vz=0;c.vy=8;c.shk=1.4;AU.play('shove');$('cutCap').textContent='Dia mendorongmu ke laut!';
+    burst(P.x,1.2,P.z,34,['#ffffff','#e8d9b0','#c9a86a'],6,4,.3,.7,6);pushFx(P.x,P.z,4,'#ffffff')}
   }else{
-   P.y=Math.max(-4,(P.y||0)-dt*2.2);P.x+=c.vx*dt*.15;P.z+=c.vz*dt*.15;
-   if(R()<.7)emitP(P.x+(R()-.5)*.8,(P.y||0)+.2,P.z+(R()-.5)*.8,0,1.5+R()*1.5,0,.9,.14+R()*.1,'#bfe9ff',-1)
+   if(!c.splashed){c.vy-=22*dt;P.x+=c.vx*dt;P.z+=c.vz*dt;P.y=(P.y||0)+c.vy*dt;c.spin+=dt*9;
+    emitP(P.x,(P.y||0)+.8,P.z,(R()-.5)*1.5,(R()-.5)*1.5,(R()-.5)*1.5,.5,.22,'#ffffff',0);
+    if(P.y<=-1.35){c.splashed=true;c.shk=1.2;AU.play('splash');
+     burst(P.x,-1.3,P.z,80,['#ffffff','#bfe9ff','#5ab6ff'],8,10,.42,1.1,14);pushFx(P.x,P.z,6,'#bfe9ff');pushFx(P.x,P.z,3,'#ffffff')}
+   }else{
+    P.y=Math.max(-4,(P.y||0)-dt*2.2);P.x+=c.vx*dt*.15;
+    if(R()<.7)emitP(P.x+(R()-.5)*.8,(P.y||0)+.2,P.z+(R()-.5)*.8,0,1.5+R()*1.5,0,.9,.14+R()*.1,'#bfe9ff',-1)
+   }
   }
+  if(t>=3.5)cutFade(c,true);
+  if(t>=4.5){ // pindah ke laut lepas
+   c.stage=1;c.t1=t;setWorld('open');P.moving=false;P.x=0;P.z=0;P.y=-.5;P.ry=Math.PI*.8;c.lie=-1.45;pl.g.visible=true;
+   $('cutCap').textContent='Terombang-ambing di tengah laut…';cutFade(c,false);AU.play('wave')}
+ }else if(c.stage===1){
+  const u=t-c.t1;
+  raft.position.set(Math.sin(u*.3)*.6,-1.05+Math.sin(u*1.3)*.1,Math.cos(u*.25)*.5);raft.rotation.set(Math.sin(u*.9)*.05,u*.08,Math.cos(u*1.1)*.05);
+  P.x=raft.position.x;P.z=raft.position.z;P.y=raft.position.y+.55;
+  if(R()<.35)emitP(raft.position.x+(R()-.5)*5,-1.3,raft.position.z+(R()-.5)*5,0,1.2,0,.8,.18,'#ffffff',-1);
+  if(u>=3.6&&u<3.7)AU.play('wave');
+  if(u>=5.2)cutFade(c,true);
+  if(u>=6.2){ // pindah ke pantai pulau
+   c.stage=2;c.t2=t;setWorld('island');P.x=c.B[0];P.z=c.B[1];P.y=.3;P.ry=c.ba+Math.PI/2;c.lie=-1.45;
+   $('cutCap').textContent='Terdampar di sebuah pulau…';cutFade(c,false);AU.play('wave')}
+ }else{
+  const u=t-c.t2;
+  if(u<2.6){c.lie=-1.45;P.y=.3+Math.sin(u*3)*.02}
+  else if(u<4.1){const e=(u-2.6)/1.5,sm=e*e*(3-2*e);c.lie=-1.45*(1-sm);P.y=.3*(1-sm);if(!c.cap2){c.cap2=1;$('cutCap').textContent='Zombie laut mengintai di pulau ini…'}}
+  else{c.lie=0;P.y=0;P.ry=c.ba+Math.PI}
+  if(u>=5.3)cutFade(c,true);
+  if(u>=6.3)finishPush();
  }
- if(t>=3.9&&!c.fade){c.fade=true;$('cutFade').classList.add('fade')}
- if(t>=4.9)finishPush();
 }
 function cutCam(){
  const c=G.cut,P=G.P,z=c.z,s=c.shk*.4;
- camera.position.set(c.cp[0]+(Math.random()-.5)*s,c.cp[1]+(Math.random()-.5)*s,c.cp[2]+(Math.random()-.5)*s);
- if(!c.shoved)camera.lookAt((P.x+z.x)/2,1.5,(P.z+z.z)/2);else camera.lookAt(P.x,Math.max(-.8,(P.y||0)+.9),P.z);
+ if(c.stage===0){
+  camera.position.set(c.cp[0]+(Math.random()-.5)*s,c.cp[1]+(Math.random()-.5)*s,c.cp[2]+(Math.random()-.5)*s);
+  if(!c.shoved)camera.lookAt((P.x+z.x)/2,1.5,(P.z+z.z)/2);else camera.lookAt(P.x,Math.max(-.8,(P.y||0)+.9),P.z);
+ }else if(c.stage===1){
+  const u=c.t-c.t1,an=.6+u*.28,r=9.5-u*.25;
+  camera.position.set(Math.cos(an)*r,1.6+u*.28,Math.sin(an)*r);camera.lookAt(P.x,P.y+.5,P.z);
+ }else{
+  const u=c.t-c.t2,k=Math.min(1,Math.max(0,(u-2.6)/2.2)),bx=c.B[0],bz=c.B[1],rr=.82-.1*k,tx=-Math.sin(c.ba)*3*(1-k),tz=Math.cos(c.ba)*3*(1-k);
+  camera.position.set(bx*rr+tx,1.2+1.1*k,bz*rr+tz);camera.lookAt(bx,.5+.9*k,bz);
+ }
 }
 function cutPose(t){
- const c=G.cut;if(!c)return;const r=pl.rig;
- if(c.shoved){r.body.rotation.x=c.splashed?0:c.spin;r.armL.rotation.x=r.armR.rotation.x=-2.6;r.legL.rotation.x=Math.sin(t*20)*.9;r.legR.rotation.x=-Math.sin(t*20)*.9;if((G.P.y||0)<-2.2)pl.g.visible=false}
- else if(c.t>=1.1){r.armL.rotation.x=r.armR.rotation.x=-.4;r.body.rotation.x=-.12}
+ const c=G.cut;if(!c)return;const r=pl.rig,P=G.P;
+ pl.g.rotation.x=c.lie||0;
+ if(c.stage===0&&c.shoved){r.body.rotation.x=c.splashed?0:c.spin;r.armL.rotation.x=r.armR.rotation.x=-2.6;r.legL.rotation.x=Math.sin(t*20)*.9;r.legR.rotation.x=-Math.sin(t*20)*.9;if((P.y||0)<-2.2)pl.g.visible=false}
+ else if(c.stage===0&&c.t>=1.1){r.armL.rotation.x=r.armR.rotation.x=-.4;r.body.rotation.x=-.12}
+ else if(c.stage>=1&&c.lie<-.01){r.armL.rotation.x=r.armR.rotation.x=-.15;r.legL.rotation.x=r.legR.rotation.x=0;r.body.rotation.x=0}
 }
 function finishPush(){
- const c=G.cut;G.cut=null;$('cut').classList.remove('on');cam.dist=c.dist0;pl.g.visible=true;
+ const c=G.cut;if(!c)return;G.cut=null;$('cut').classList.remove('on');cam.dist=c.dist0;pl.g.visible=true;pl.g.rotation.x=0;
  const gain=Math.round(((G.room+1)*12+G.kills*2)*DIFF[CFG.diff].coin*1.5*(1+(CFG.level-1)*.25));
  SAVE.coins+=gain;SAVE.best=Math.max(SAVE.best||0,G.room+1);SAVE.lvlDone=Math.max(SAVE.lvlDone||0,10);SAVE.isle=1;CFG.level=11;save();
  startRun(); // dunia pulau: Lv 11
  $('cutTitle').querySelector('span').textContent='Lv 11 · zombie laut menunggu · +'+gain+' 🪙';
  const ti=$('cutTitle');ti.classList.remove('show');void ti.offsetWidth;ti.classList.add('show');
- setTimeout(()=>$('cutFade').classList.remove('fade'),250);
+ cutFade(c,true);void $('cutFade').offsetWidth;setTimeout(()=>{c.fade=true;cutFade(c,false)},250);
 }
-
+$('cutSkip').onclick=()=>{if(G.cut)finishPush()};
+addEventListener('keydown',e=>{if(G.cut&&e.code==='Enter')finishPush()});
 // tiang cahaya aura di sekitar karakter saat awakening
 const awkCol=new THREE.Mesh(new THREE.CylinderGeometry(1.0,1.6,9,28,1,true),addM('#ffffff',.3));awkCol.visible=false;scene.add(awkCol);
 const awkCol2=new THREE.Mesh(new THREE.CylinderGeometry(.55,.9,9,20,1,true),addM('#ffffff',.55));awkCol2.visible=false;scene.add(awkCol2);
@@ -1383,7 +1431,7 @@ let lobbyPT=0,lobbyBusy=false,lobbyAct=null;
 const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 function closePanels(){lobbyBusy=false;syncLock(true);$('shopP').style.display='none';$('missionP').style.display='none';$('abilityP').style.display='none';if(G.phase==='lobby')renderLobby()}
 function enterLobby(){
- G.cut=null;$('cut').classList.remove('on');$('cutFade').classList.remove('fade');pl.g.visible=true;setWorld('city');
+ G.cut=null;$('cut').classList.remove('on');$('cutFade').classList.remove('fade');pl.g.visible=true;pl.g.rotation.x=0;setWorld('city');
  G.P=mkP();G.P.x=LX;G.P.z=8;G.P.ry=Math.PI;
  G.zombies.forEach(z=>{z.active=false});G.texts.forEach(t=>{t.active=false});G.fx.forEach(f=>{f.active=false});G.slashes.forEach(q=>{q.active=false});
  G.cleared=false;G.camSnap=true;lobbyPT=0;closePanels();G.joy.x=G.joy.z=0;G.attackHeld=false;setPhase('lobby');
@@ -1676,6 +1724,7 @@ const AU=(()=>{
   frost(){tone(60,.7,'sine',.6,.4);noise(.25,.45,1200,300,'lowpass');noise(.9,.3,6000,1800,'highpass',.04);[1568,2093,2637,3136].forEach((f,i)=>tone(f,.45,'triangle',.07,.8,.1+i*.06))},
   flameSuper(){noise(1.2,.4,300,2200,'bandpass');tone(80,1,'sawtooth',.2,.35,0,undefined,600);tone(160,.9,'sawtooth',.1,2,.1,undefined,1500);noise(.6,.35,900,120,'lowpass',.15)},
   splash(){noise(.9,.5,4000,250,'lowpass');tone(180,.5,'sine',.35,.3);noise(.5,.25,6000,1500,'highpass',.05)},
+  wave(){noise(2.4,.2,300,900,'lowpass');noise(2.0,.12,1200,400,'bandpass',.3)},
   shove(){tone(90,.35,'square',.45,.4);noise(.25,.35,900,90,'lowpass');tone(500,.1,'sawtooth',.1,.5,.02)},
   buy(){tone(988,.08,'square',.09);tone(1319,.08,'square',.09,1,.07);tone(1760,.18,'square',.09,1,.14)}
  };
@@ -1852,7 +1901,7 @@ refreshInstall();
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{})});
 // ===== Bahasa / Language (Indonesia ⇄ English) =====
 const I18N=(()=>{
- const LS='zi_lang',RAW=[["Tinggal satu zombie tersisa…","Only one zombie left…"],["Dia mendorongmu ke laut!","It shoves you into the sea!"],["LEVEL BARU TERBUKA","NEW LEVEL UNLOCKED"],["Pulau Terdampar","Stranded Island"],["zombie laut menunggu","ocean zombies await"],["menghantam dengan tentakel — jauhi lingkaran merah!","slams with tentacles — stay out of the red circle!"],["menerjang secepat kilat — hindari dengan dash!","lunges like lightning — dodge with a dash!"],["Raja Kraken","Kraken King"],["Hiu Raksasa","Giant Shark"],["↻ Putar HP ke mode landscape agar lebih nyaman", "↻ Rotate your phone to landscape for a better experience"], ["PILIH SENJATA", "SELECT WEAPON"], ["Senjata seimbang untuk memulai pertarungan.", "A balanced weapon to start the fight."], ["MASUK KE LOBI", "ENTER THE LOBBY"], ["📲 Instal Game", "📲 Install Game"], ["20–30 zombie tiap wave · Zombie lebih kuat · Musuh baru setiap 10 wave · Perempatan kota besar · Jeda 7 detik · WASD bergerak · Shift = Shift Lock · Klik kanan putar kamera · Klik kiri menyerang · Q dash · R special · E super", "20–30 zombies every wave · Stronger zombies · New enemies every 10 waves · Big city crossroads · 7-second breaks · WASD move · Shift = Shift Lock · Right-click rotates camera · Left-click attacks · Q dash · R special · E super"], ["Nama pengguna atau kata sandi salah", "Wrong username or password"], ["Nama pengguna harus 3–16 karakter: huruf, angka, atau _", "Username must be 3–16 characters: letters, numbers, or _"], ["Nama pengguna", "Username"], ["Kata sandi minimal 4 karakter", "Password must be at least 4 characters"], ["Kata sandi", "Password"], ["minimal 4 karakter", "at least 4 characters"], ["3–16 huruf, angka, atau _", "3–16 letters, numbers, or _"], ["Pindahkan progres tamu (koin, pedang, level) ke akun baru ini", "Move guest progress (coins, swords, levels) to this new account"], ["Tanpa email. Akun tersimpan di perangkat ini. Pindah perangkat atau cadangan? Pakai Kode Simpan setelah masuk.", "No email needed. The account is stored on this device. Switching devices or making a backup? Use the Save Code after signing in."], ["Masuk sebagai", "Signed in as"], ["Masuk ke Akun", "Sign In to Account"], ["Salin Kode Simpan", "Copy Save Code"], ["Tempel Kode Simpan di sini lalu tekan Impor", "Paste your Save Code here, then press Import"], ["Kode Simpan disalin! Simpan di tempat aman.", "Save Code copied! Keep it somewhere safe."], ["Salin manual dari kotak di bawah.", "Copy it manually from the box below."], ["Impor Kode", "Import Code"], ["Kode tidak valid", "Invalid code"], ["Berhasil diimpor! Memuat...", "Imported! Loading..."], ["Berhasil! Memuat...", "Success! Loading..."], ["Nama itu sudah dipakai di perangkat ini", "That name is already used on this device"], ["Keluar / Ganti Akun", "Log Out / Switch Account"], ["Buat Akun", "Create Account"], ["Main sebagai tamu", "Play as guest"], ["Tetap sebagai tamu", "Stay as guest"], [" · buat akun", " · create account"], ["Tamu", "Guest"], ["Akun", "Account"], ["Masuk", "Log In"], ["Jeda", "Paused"], ["Lanjut", "Resume"], ["Kembali ke Lobi", "Back to Lobby"], ["Bos kalah! Pilih peningkatan", "Boss defeated! Choose an upgrade"], ["Wave selesai! Pilih peningkatan", "Wave cleared! Choose an upgrade"], ["TOKO PEDANG", "SWORD SHOP"], ["TOKO ABILITY", "ABILITY SHOP"], ["PAPAN MISI", "MISSION BOARD"], ["▶ PILIH ARENA", "▶ CHOOSE ARENA"], ["Beli & pakai pedang · tiap pedang punya super berbeda", "Buy & equip swords · every sword has a different super"], ["Beli special skill untuk tombol R", "Buy special skills for the R key"], ["SENJATA", "WEAPON"], ["Toko Pedang", "Sword Shop"], ["Toko Ability", "Ability Shop"], ["Koin kamu:", "Your coins:"], [" · koin didapat dari tiap run", " · coins are earned from every run"], [" · Special skill (tombol R) dibeli di sini lalu dipasang. Tidak berubah acak lagi setelah bos.", " · Special skills (R key) are bought here, then equipped. They no longer change randomly after a boss."], ["Tutup papan misi", "Close mission board"], ["Tutup toko ability", "Close ability shop"], ["Tutup toko", "Close shop"], ["Tutup", "Close"], ["Papan Misi", "Mission Board"], ["Kesulitan", "Difficulty"], ["Mulai Arena ▶", "Start Arena ▶"], ["Main Lagi", "Play Again"], ["Senjata sebelumnya", "Previous weapon"], ["Senjata berikutnya", "Next weapon"], ["Pilih senjata", "Select weapon"], ["Vanguard · Pedang", "Vanguard · Sword"], ["Tebas", "Slash"], ["Mudah", "Easy"], ["Sulit", "Hard"], ["Neraka", "Hell"], [" SIAP! (E)", " READY! (E)"], [" — BOS: ", " — BOSS: "], ["BOS: ", "BOSS: "], ["BOS! Wave ", "BOSS! Wave "], ["BOS", "BOSS"], [" · ketuk untuk mengubah", " · tap to change"], ["Rekor wave: ", "Best wave: "], [" · Level terbuka: ", " · Levels unlocked: "], ["Wave berikutnya dalam 7 detik", "Next wave in 7 seconds"], ["Wave berikutnya: ", "Next wave: "], [" detik", " seconds"], ["Kalahkan semua zombie!", "Defeat all zombies!"], ["Wave 1 — kalahkan semua zombie!", "Wave 1 — defeat all zombies!"], [" selesai!", " cleared!"], ["Dipilih: ", "Chosen: "], ["Zombie baru: ", "New zombie: "], ["Bilah kembali menjadi dua", "The blade splits back into two"], ["Mouse lock ditolak browser — klik layar sekali lagi, atau tahan klik kanan untuk memutar kamera", "Mouse lock was blocked by the browser — click the screen once more, or hold right-click to rotate the camera"], ["Game terpasang di perangkatmu!", "Game installed on your device!"], ["Buka menu browser (⋮ atau …), lalu pilih \"Instal aplikasi\" atau \"Tambahkan ke layar utama\". Game harus dibuka lewat alamat https (bukan file).", "Open your browser menu (⋮ or …), then choose \"Install app\" or \"Add to home screen\". The game must be opened through an https address (not a file)."], ["iPhone/iPad: ketuk tombol Bagikan (kotak dengan panah ke atas) di Safari, lalu pilih \"Tambah ke Layar Utama\".", "iPhone/iPad: tap the Share button (the box with an up arrow) in Safari, then choose \"Add to Home Screen\"."], ["Pedang Assassin! 30 detik: tebasan depan-belakang super cepat, bar super tidak terisi", "Assassin Blade! 30 seconds: super-fast front-and-back slashes, super bar will not fill"], ["PEDANG ASSASSIN ", "ASSASSIN BLADE "], ["Pedang Assassin", "Assassin Blade"], ["Karakter: ", "Character: "], ["Senjata: ", "Weapon: "], ["Wave dicapai: ", "Wave reached: "], ["Koin didapat: ", "Coins earned: "], ["Zombie dikalahkan: ", "Zombies defeated: "], ["Waktu: ", "Time: "], ["Peningkatan: ", "Upgrades: "], ["Terbuka: ", "Unlocked: "], [" Selesai!", " Complete!"], ["Kota Selamat!", "City Saved!"], ["Kamu Kalah", "You Lost"], ["Semua level selesai!", "All levels complete!"], [" terbuka!", " unlocked!"], [": selesaikan ", ": complete "], [" wave (bos tiap 5 wave, tiap level bosnya berbeda). Level dikerjakan berurutan — menang untuk membuka level berikutnya. Makin tinggi level, zombie makin kuat (HP ×", " waves (a boss every 5 waves, a different boss each level). Levels are played in order — win to unlock the next one. The higher the level, the stronger the zombies (HP ×"], [", damage ×", ", damage ×"], [", kecepatan naik, dan jenis zombie kuat muncul lebih awal).", ", faster speed, and strong zombie types appear earlier)."], ["Infinity: bertahan sebanyak mungkin wave tanpa batas.", "Infinity: survive as many waves as you can, with no limit. Each zombie killed gives 5 coins."], [" Kesulitan ", " Difficulty "], [": zombie ", ": zombies "], ["× HP, ", "× HP, "], ["× damage, hadiah koin ", "× damage, coin reward "], ["×, bar super terisi ", "×, super bar fills at "], ["% dari kecepatan dasar. Rekor wave: ", "% of the base rate. Best wave: "], ["Raja Zombie", "Zombie King"], ["Raksasa Batu", "Stone Giant"], ["Penerjang Merah", "Red Charger"], ["Ratu Racun", "Toxic Queen"], ["Hantu Biru", "Blue Phantom"], ["Raja Api", "Fire King"], ["memanggil pasukan zombie", "summons a zombie army"], ["menghantam tanah — jauhi lingkaran merah!", "smashes the ground — stay out of the red circle!"], ["menyeruduk lurus ke arahmu — hindari dengan dash!", "charges straight at you — dodge with a dash!"], ["menyebar racun dan memanggil pelari", "spreads poison and summons runners"], ["berpindah tempat dengan cepat", "teleports around quickly"], ["ledakan api besar — makin ganas saat HP rendah", "huge fire blasts — fiercer at low HP"], ["Seimbang untuk serangan dan kecepatan.", "Balanced between attack and speed."], ["Dua bilah ringan dengan serangan cepat.", "Two light blades with fast attacks."], ["Pedang besar dengan damage tinggi.", "A big sword with high damage."], ["Bilah energi dengan jangkauan luas.", "An energy blade with wide reach."], ["Pedang", "Sword"], ["Tiap tebasan yang kena membakar zombie 3 detik.", "Every slash that hits sets the zombie on fire for 3 seconds."], ["Tiap tebasan yang kena membekukan zombie 3 detik (bos 1,2 detik, tidak bisa terus-menerus).", "Every slash that hits freezes the zombie for 3 seconds (boss 1.2 seconds, can't be chained)."], ["Pasif: ", "Passive: "], ["Jangkauan ", "Range "], ["Kecepatan ", "Speed "], [" · bidik manual", " · manual aim"], ["Beli 🪙", "Buy 🪙"], ["Dipakai", "Equipped"], ["Pakai", "Equip"], ["Pasang", "Equip"], ["Tebasan melingkar di sekitarmu. Ability awal gratis.", "A circular slash around you. Starter ability, free."], ["Hentakan bumi: gelombang kejut luas dengan knockback besar.", "Earth stomp: a wide shockwave with strong knockback."], ["Gelombang tebasan melesat lurus menembus zombie di depan.", "A slash wave that shoots straight through the zombies ahead."], ["Petir menyambar 6 zombie terdekat.", "Lightning strikes the 6 nearest zombies."], ["4 pusaran tebasan beruntun di sekelilingmu.", "4 consecutive slash spins around you."], ["Hujan meteor menghantam 5 zombie terdekat: damage besar dan membuat mereka terbakar 3 detik.", "Meteors rain down on the 5 nearest zombies: heavy damage and sets them on fire for 3 seconds."], ["Badai es di sekitarmu: membekukan zombie 2,5 detik (bos 1,2 detik) dan memberi damage ringan.", "An ice storm around you: freezes zombies for 2.5 seconds (boss 1.2 seconds) and deals light damage."], ["Cahaya penyembuh: memulihkan 35% HP dan kebal selama 1,5 detik.", "Healing light: restores 35% HP and grants invincibility for 1.5 seconds."], ["Lubang hitam menyedot semua zombie ke arahmu lalu meledakkan mereka dengan damage besar.", "A black hole pulls every zombie toward you, then blows them up for heavy damage."], ["Tahan tombol untuk membidik, lepas untuk melompat dan menghantam tanah.", "Hold the button to aim, release to leap and slam the ground."], ["Pusaran Tebasan", "Slash Whirl"], ["Hentak Bumi", "Earth Stomp"], ["Gelombang Pedang", "Sword Wave"], ["Badai Pedang", "Blade Storm"], ["Hujan Meteor", "Meteor Rain"], ["Badai Es", "Ice Storm"], ["Cahaya Penyembuh", "Healing Light"], ["Lubang Hitam", "Black Hole"], [" · bidik manual", " · manual aim"], ["Gelombang tebasan raksasa menghantam SEMUA zombie di arena.", "A giant slash wave hits ALL zombies in the arena."], ["Dua pedang menyatu jadi satu gagang dengan bilah di kedua ujung (dual head blade) selama 30 detik: tebasan super cepat ke depan dan belakang sambil memutar badan. Selama itu bar super tidak terisi.", "The two swords fuse into one hilt with a blade on both ends (dual head blade) for 30 seconds: super-fast slashes forward and backward while spinning. The super bar does not fill during this time."], ["Menghantam tanah di depanmu: damage sangat besar, knockback kuat, zombie pingsan.", "Smashes the ground in front of you: huge damage, strong knockback, zombies get stunned."], ["Sinar panjang menembus semua zombie dalam garis lurus ke depan.", "A long beam pierces every zombie in a straight line ahead."], ["Melesat menembus barisan zombie dan menebas semua yang dilewati.", "Dashes through the zombie line and slashes everything on the way."], ["Berputar menebas ke segala arah: gelombang api tebal menyapu seluruh map, mengenai semua zombie dan membuat mereka terbakar sampai mati.", "Spins and slashes in every direction: a thick wave of fire sweeps the entire map, hits all zombies and burns them until they die."], ["Menghentakkan kaki ke tanah: gelombang es membekukan seluruh map (semua zombie beku 4,5 detik, bos 2,2 detik) dan menumbuhkan es di arena.", "Stomps the ground: an ice wave freezes the entire map (all zombies frozen 4.5 seconds, boss 2.2 seconds) and grows ice across the arena."], ["Ledakan Pahlawan", "Hero Blast"], ["Hantaman Raksasa", "Giant Smash"], ["Sinar Energi", "Energy Beam"], ["Tebasan Kilat", "Lightning Slash"], ["Putaran Neraka", "Inferno Spin"], ["Hentakan Beku", "Frozen Stomp"], ["Tebasan +30%", "Slash +30%"], ["Damage pedang naik 30%", "Sword damage +30%"], ["Nyawa maks +30 dan pulih penuh", "Max HP +30 and fully healed"], ["Nyawa maks +30", "Max HP +30"], ["Nyawa maks +25", "Max HP +25"], ["Lari +12%", "Run +12%"], ["Kecepatan gerak naik 12%", "Move speed +12%"], ["Dash dan special lebih cepat", "Dash and special recharge faster"], ["Super +40%", "Super +40%"], ["Bar super terisi lebih cepat", "The super bar fills faster"], ["Hisap nyawa 6%", "Life steal 6%"], ["Pulih 6% dari damage yang kamu beri", "Heal 6% of the damage you deal"], ["Jangkauan +20%", "Range +20%"], ["Tebasan menjangkau lebih jauh", "Slashes reach farther"], ["Special +30%", "Special +30%"], ["Damage special naik 30%", "Special damage +30%"], ["Tebasan +25%", "Slash +25%"], ["Pulih 40 HP", "Heal 40 HP"], ["Super terisi +40%", "Super charge +40%"], ["Suara: Semua", "Sound: All"], ["Efek saja", "Effects only"], ["Suara mati", "Sound off"]];let lang='id';
+ const LS='zi_lang',RAW=[["Terombang-ambing di tengah laut…","Adrift in the middle of the sea…"],["Terdampar di sebuah pulau…","Washed ashore on an island…"],["Zombie laut mengintai di pulau ini…","Ocean zombies lurk on this island…"],["Lewati ▶","Skip ▶"],["Tinggal satu zombie tersisa…","Only one zombie left…"],["Dia mendorongmu ke laut!","It shoves you into the sea!"],["LEVEL BARU TERBUKA","NEW LEVEL UNLOCKED"],["Pulau Terdampar","Stranded Island"],["zombie laut menunggu","ocean zombies await"],["menghantam dengan tentakel — jauhi lingkaran merah!","slams with tentacles — stay out of the red circle!"],["menerjang secepat kilat — hindari dengan dash!","lunges like lightning — dodge with a dash!"],["Raja Kraken","Kraken King"],["Hiu Raksasa","Giant Shark"],["↻ Putar HP ke mode landscape agar lebih nyaman", "↻ Rotate your phone to landscape for a better experience"], ["PILIH SENJATA", "SELECT WEAPON"], ["Senjata seimbang untuk memulai pertarungan.", "A balanced weapon to start the fight."], ["MASUK KE LOBI", "ENTER THE LOBBY"], ["📲 Instal Game", "📲 Install Game"], ["20–30 zombie tiap wave · Zombie lebih kuat · Musuh baru setiap 10 wave · Perempatan kota besar · Jeda 7 detik · WASD bergerak · Shift = Shift Lock · Klik kanan putar kamera · Klik kiri menyerang · Q dash · R special · E super", "20–30 zombies every wave · Stronger zombies · New enemies every 10 waves · Big city crossroads · 7-second breaks · WASD move · Shift = Shift Lock · Right-click rotates camera · Left-click attacks · Q dash · R special · E super"], ["Nama pengguna atau kata sandi salah", "Wrong username or password"], ["Nama pengguna harus 3–16 karakter: huruf, angka, atau _", "Username must be 3–16 characters: letters, numbers, or _"], ["Nama pengguna", "Username"], ["Kata sandi minimal 4 karakter", "Password must be at least 4 characters"], ["Kata sandi", "Password"], ["minimal 4 karakter", "at least 4 characters"], ["3–16 huruf, angka, atau _", "3–16 letters, numbers, or _"], ["Pindahkan progres tamu (koin, pedang, level) ke akun baru ini", "Move guest progress (coins, swords, levels) to this new account"], ["Tanpa email. Akun tersimpan di perangkat ini. Pindah perangkat atau cadangan? Pakai Kode Simpan setelah masuk.", "No email needed. The account is stored on this device. Switching devices or making a backup? Use the Save Code after signing in."], ["Masuk sebagai", "Signed in as"], ["Masuk ke Akun", "Sign In to Account"], ["Salin Kode Simpan", "Copy Save Code"], ["Tempel Kode Simpan di sini lalu tekan Impor", "Paste your Save Code here, then press Import"], ["Kode Simpan disalin! Simpan di tempat aman.", "Save Code copied! Keep it somewhere safe."], ["Salin manual dari kotak di bawah.", "Copy it manually from the box below."], ["Impor Kode", "Import Code"], ["Kode tidak valid", "Invalid code"], ["Berhasil diimpor! Memuat...", "Imported! Loading..."], ["Berhasil! Memuat...", "Success! Loading..."], ["Nama itu sudah dipakai di perangkat ini", "That name is already used on this device"], ["Keluar / Ganti Akun", "Log Out / Switch Account"], ["Buat Akun", "Create Account"], ["Main sebagai tamu", "Play as guest"], ["Tetap sebagai tamu", "Stay as guest"], [" · buat akun", " · create account"], ["Tamu", "Guest"], ["Akun", "Account"], ["Masuk", "Log In"], ["Jeda", "Paused"], ["Lanjut", "Resume"], ["Kembali ke Lobi", "Back to Lobby"], ["Bos kalah! Pilih peningkatan", "Boss defeated! Choose an upgrade"], ["Wave selesai! Pilih peningkatan", "Wave cleared! Choose an upgrade"], ["TOKO PEDANG", "SWORD SHOP"], ["TOKO ABILITY", "ABILITY SHOP"], ["PAPAN MISI", "MISSION BOARD"], ["▶ PILIH ARENA", "▶ CHOOSE ARENA"], ["Beli & pakai pedang · tiap pedang punya super berbeda", "Buy & equip swords · every sword has a different super"], ["Beli special skill untuk tombol R", "Buy special skills for the R key"], ["SENJATA", "WEAPON"], ["Toko Pedang", "Sword Shop"], ["Toko Ability", "Ability Shop"], ["Koin kamu:", "Your coins:"], [" · koin didapat dari tiap run", " · coins are earned from every run"], [" · Special skill (tombol R) dibeli di sini lalu dipasang. Tidak berubah acak lagi setelah bos.", " · Special skills (R key) are bought here, then equipped. They no longer change randomly after a boss."], ["Tutup papan misi", "Close mission board"], ["Tutup toko ability", "Close ability shop"], ["Tutup toko", "Close shop"], ["Tutup", "Close"], ["Papan Misi", "Mission Board"], ["Kesulitan", "Difficulty"], ["Mulai Arena ▶", "Start Arena ▶"], ["Main Lagi", "Play Again"], ["Senjata sebelumnya", "Previous weapon"], ["Senjata berikutnya", "Next weapon"], ["Pilih senjata", "Select weapon"], ["Vanguard · Pedang", "Vanguard · Sword"], ["Tebas", "Slash"], ["Mudah", "Easy"], ["Sulit", "Hard"], ["Neraka", "Hell"], [" SIAP! (E)", " READY! (E)"], [" — BOS: ", " — BOSS: "], ["BOS: ", "BOSS: "], ["BOS! Wave ", "BOSS! Wave "], ["BOS", "BOSS"], [" · ketuk untuk mengubah", " · tap to change"], ["Rekor wave: ", "Best wave: "], [" · Level terbuka: ", " · Levels unlocked: "], ["Wave berikutnya dalam 7 detik", "Next wave in 7 seconds"], ["Wave berikutnya: ", "Next wave: "], [" detik", " seconds"], ["Kalahkan semua zombie!", "Defeat all zombies!"], ["Wave 1 — kalahkan semua zombie!", "Wave 1 — defeat all zombies!"], [" selesai!", " cleared!"], ["Dipilih: ", "Chosen: "], ["Zombie baru: ", "New zombie: "], ["Bilah kembali menjadi dua", "The blade splits back into two"], ["Mouse lock ditolak browser — klik layar sekali lagi, atau tahan klik kanan untuk memutar kamera", "Mouse lock was blocked by the browser — click the screen once more, or hold right-click to rotate the camera"], ["Game terpasang di perangkatmu!", "Game installed on your device!"], ["Buka menu browser (⋮ atau …), lalu pilih \"Instal aplikasi\" atau \"Tambahkan ke layar utama\". Game harus dibuka lewat alamat https (bukan file).", "Open your browser menu (⋮ or …), then choose \"Install app\" or \"Add to home screen\". The game must be opened through an https address (not a file)."], ["iPhone/iPad: ketuk tombol Bagikan (kotak dengan panah ke atas) di Safari, lalu pilih \"Tambah ke Layar Utama\".", "iPhone/iPad: tap the Share button (the box with an up arrow) in Safari, then choose \"Add to Home Screen\"."], ["Pedang Assassin! 30 detik: tebasan depan-belakang super cepat, bar super tidak terisi", "Assassin Blade! 30 seconds: super-fast front-and-back slashes, super bar will not fill"], ["PEDANG ASSASSIN ", "ASSASSIN BLADE "], ["Pedang Assassin", "Assassin Blade"], ["Karakter: ", "Character: "], ["Senjata: ", "Weapon: "], ["Wave dicapai: ", "Wave reached: "], ["Koin didapat: ", "Coins earned: "], ["Zombie dikalahkan: ", "Zombies defeated: "], ["Waktu: ", "Time: "], ["Peningkatan: ", "Upgrades: "], ["Terbuka: ", "Unlocked: "], [" Selesai!", " Complete!"], ["Kota Selamat!", "City Saved!"], ["Kamu Kalah", "You Lost"], ["Semua level selesai!", "All levels complete!"], [" terbuka!", " unlocked!"], [": selesaikan ", ": complete "], [" wave (bos tiap 5 wave, tiap level bosnya berbeda). Level dikerjakan berurutan — menang untuk membuka level berikutnya. Makin tinggi level, zombie makin kuat (HP ×", " waves (a boss every 5 waves, a different boss each level). Levels are played in order — win to unlock the next one. The higher the level, the stronger the zombies (HP ×"], [", damage ×", ", damage ×"], [", kecepatan naik, dan jenis zombie kuat muncul lebih awal).", ", faster speed, and strong zombie types appear earlier)."], ["Infinity: bertahan sebanyak mungkin wave tanpa batas.", "Infinity: survive as many waves as you can, with no limit. Each zombie killed gives 5 coins."], [" Kesulitan ", " Difficulty "], [": zombie ", ": zombies "], ["× HP, ", "× HP, "], ["× damage, hadiah koin ", "× damage, coin reward "], ["×, bar super terisi ", "×, super bar fills at "], ["% dari kecepatan dasar. Rekor wave: ", "% of the base rate. Best wave: "], ["Raja Zombie", "Zombie King"], ["Raksasa Batu", "Stone Giant"], ["Penerjang Merah", "Red Charger"], ["Ratu Racun", "Toxic Queen"], ["Hantu Biru", "Blue Phantom"], ["Raja Api", "Fire King"], ["memanggil pasukan zombie", "summons a zombie army"], ["menghantam tanah — jauhi lingkaran merah!", "smashes the ground — stay out of the red circle!"], ["menyeruduk lurus ke arahmu — hindari dengan dash!", "charges straight at you — dodge with a dash!"], ["menyebar racun dan memanggil pelari", "spreads poison and summons runners"], ["berpindah tempat dengan cepat", "teleports around quickly"], ["ledakan api besar — makin ganas saat HP rendah", "huge fire blasts — fiercer at low HP"], ["Seimbang untuk serangan dan kecepatan.", "Balanced between attack and speed."], ["Dua bilah ringan dengan serangan cepat.", "Two light blades with fast attacks."], ["Pedang besar dengan damage tinggi.", "A big sword with high damage."], ["Bilah energi dengan jangkauan luas.", "An energy blade with wide reach."], ["Pedang", "Sword"], ["Tiap tebasan yang kena membakar zombie 3 detik.", "Every slash that hits sets the zombie on fire for 3 seconds."], ["Tiap tebasan yang kena membekukan zombie 3 detik (bos 1,2 detik, tidak bisa terus-menerus).", "Every slash that hits freezes the zombie for 3 seconds (boss 1.2 seconds, can't be chained)."], ["Pasif: ", "Passive: "], ["Jangkauan ", "Range "], ["Kecepatan ", "Speed "], [" · bidik manual", " · manual aim"], ["Beli 🪙", "Buy 🪙"], ["Dipakai", "Equipped"], ["Pakai", "Equip"], ["Pasang", "Equip"], ["Tebasan melingkar di sekitarmu. Ability awal gratis.", "A circular slash around you. Starter ability, free."], ["Hentakan bumi: gelombang kejut luas dengan knockback besar.", "Earth stomp: a wide shockwave with strong knockback."], ["Gelombang tebasan melesat lurus menembus zombie di depan.", "A slash wave that shoots straight through the zombies ahead."], ["Petir menyambar 6 zombie terdekat.", "Lightning strikes the 6 nearest zombies."], ["4 pusaran tebasan beruntun di sekelilingmu.", "4 consecutive slash spins around you."], ["Hujan meteor menghantam 5 zombie terdekat: damage besar dan membuat mereka terbakar 3 detik.", "Meteors rain down on the 5 nearest zombies: heavy damage and sets them on fire for 3 seconds."], ["Badai es di sekitarmu: membekukan zombie 2,5 detik (bos 1,2 detik) dan memberi damage ringan.", "An ice storm around you: freezes zombies for 2.5 seconds (boss 1.2 seconds) and deals light damage."], ["Cahaya penyembuh: memulihkan 35% HP dan kebal selama 1,5 detik.", "Healing light: restores 35% HP and grants invincibility for 1.5 seconds."], ["Lubang hitam menyedot semua zombie ke arahmu lalu meledakkan mereka dengan damage besar.", "A black hole pulls every zombie toward you, then blows them up for heavy damage."], ["Tahan tombol untuk membidik, lepas untuk melompat dan menghantam tanah.", "Hold the button to aim, release to leap and slam the ground."], ["Pusaran Tebasan", "Slash Whirl"], ["Hentak Bumi", "Earth Stomp"], ["Gelombang Pedang", "Sword Wave"], ["Badai Pedang", "Blade Storm"], ["Hujan Meteor", "Meteor Rain"], ["Badai Es", "Ice Storm"], ["Cahaya Penyembuh", "Healing Light"], ["Lubang Hitam", "Black Hole"], [" · bidik manual", " · manual aim"], ["Gelombang tebasan raksasa menghantam SEMUA zombie di arena.", "A giant slash wave hits ALL zombies in the arena."], ["Dua pedang menyatu jadi satu gagang dengan bilah di kedua ujung (dual head blade) selama 30 detik: tebasan super cepat ke depan dan belakang sambil memutar badan. Selama itu bar super tidak terisi.", "The two swords fuse into one hilt with a blade on both ends (dual head blade) for 30 seconds: super-fast slashes forward and backward while spinning. The super bar does not fill during this time."], ["Menghantam tanah di depanmu: damage sangat besar, knockback kuat, zombie pingsan.", "Smashes the ground in front of you: huge damage, strong knockback, zombies get stunned."], ["Sinar panjang menembus semua zombie dalam garis lurus ke depan.", "A long beam pierces every zombie in a straight line ahead."], ["Melesat menembus barisan zombie dan menebas semua yang dilewati.", "Dashes through the zombie line and slashes everything on the way."], ["Berputar menebas ke segala arah: gelombang api tebal menyapu seluruh map, mengenai semua zombie dan membuat mereka terbakar sampai mati.", "Spins and slashes in every direction: a thick wave of fire sweeps the entire map, hits all zombies and burns them until they die."], ["Menghentakkan kaki ke tanah: gelombang es membekukan seluruh map (semua zombie beku 4,5 detik, bos 2,2 detik) dan menumbuhkan es di arena.", "Stomps the ground: an ice wave freezes the entire map (all zombies frozen 4.5 seconds, boss 2.2 seconds) and grows ice across the arena."], ["Ledakan Pahlawan", "Hero Blast"], ["Hantaman Raksasa", "Giant Smash"], ["Sinar Energi", "Energy Beam"], ["Tebasan Kilat", "Lightning Slash"], ["Putaran Neraka", "Inferno Spin"], ["Hentakan Beku", "Frozen Stomp"], ["Tebasan +30%", "Slash +30%"], ["Damage pedang naik 30%", "Sword damage +30%"], ["Nyawa maks +30 dan pulih penuh", "Max HP +30 and fully healed"], ["Nyawa maks +30", "Max HP +30"], ["Nyawa maks +25", "Max HP +25"], ["Lari +12%", "Run +12%"], ["Kecepatan gerak naik 12%", "Move speed +12%"], ["Dash dan special lebih cepat", "Dash and special recharge faster"], ["Super +40%", "Super +40%"], ["Bar super terisi lebih cepat", "The super bar fills faster"], ["Hisap nyawa 6%", "Life steal 6%"], ["Pulih 6% dari damage yang kamu beri", "Heal 6% of the damage you deal"], ["Jangkauan +20%", "Range +20%"], ["Tebasan menjangkau lebih jauh", "Slashes reach farther"], ["Special +30%", "Special +30%"], ["Damage special naik 30%", "Special damage +30%"], ["Tebasan +25%", "Slash +25%"], ["Pulih 40 HP", "Heal 40 HP"], ["Super terisi +40%", "Super charge +40%"], ["Suara: Semua", "Sound: All"], ["Efek saja", "Effects only"], ["Suara mati", "Sound off"]];let lang='id';
  try{const v=localStorage.getItem(LS);lang=(v==='en'||v==='id')?v:((navigator.language||'id').toLowerCase().indexOf('id')===0?'id':'en')}catch(e){}
  const D=[];RAW.forEach(([a,b])=>{if(a===b)return;D.push([a,b]);if(a.length<=48&&a.toUpperCase()!==a)D.push([a.toUpperCase(),b.toUpperCase()])});
  D.sort((x,y)=>y[0].length-x[0].length);
