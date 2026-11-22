@@ -447,6 +447,8 @@ function weaponProc(z,P){
 function offerUpgrades(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.random()-.5).slice(0,3);$('upg').querySelector('h1').textContent=boss?'Bos kalah! Pilih peningkatan':'Wave selesai! Pilih peningkatan';setPhase('upgrade');renderUpg()}
 function pick(i){const u=choices[i];u[2](G.P);G.ups.push(u[0]);bossPick=false;toast('Dipilih: '+u[0]);setPhase('play')}
 const toast=t=>{G.toast.text=t;G.toast.t=2.4};
+// Infinity: tiap zombie yang dikalahkan langsung memberi 5 koin
+function killCoin(z){if(CFG.mode!=='infinity')return;SAVE.coins+=5;G.runCoins=(G.runCoins||0)+5;pushText(z.x,2.8*ZDEF[z.type].scale,z.z,'+5 \ud83e\ude99','#ffd23f');save()}
 const pushText=(x,y,z,text,color)=>{const t=G.texts.find(s=>!s.active)||G.texts[0];Object.assign(t,{active:true,x:x+(Math.random()-.5)*.6,y,z,t:0,text,color})};
 const pushFx=(x,z,max,color)=>{const f=G.fx.find(s=>!s.active)||G.fx[0];Object.assign(f,{active:true,x,z,t:0,max,color})};
 const pushSlash=(x,z,ry,kind,sc)=>{const s=G.slashes.find(q=>!q.active)||G.slashes[0];Object.assign(s,{active:true,x,z,ry,t:0,kind,sc})};
@@ -487,7 +489,7 @@ function spawnRoom(){
  });
 }
 function startRun(){
- G.P=mkP();G.special=abilityIdx();G.room=0;G.kills=0;G.time=0;G.shake=0;G.ups=[];
+ G.P=mkP();G.special=abilityIdx();G.room=0;G.kills=0;G.runCoins=0;G.time=0;G.shake=0;G.ups=[];
  G.texts.forEach(t=>t.active=false);G.fx.forEach(f=>f.active=false);G.beams.forEach(b=>b.active=false);G.awk=null;G.sfx=null;$('awk').classList.remove('on');
  G.req={attack:false,dash:false,special:false,super:false};
  spawnRoom();G.camSnap=true;setPhase('play');toast('Wave 1 — kalahkan semua zombie!');
@@ -499,7 +501,7 @@ function hitZombie(z,dmg,kb,sx,sz,stun,quiet){
  z.vx+=dx/l*k;z.vz+=dz/l*k;z.hp-=dmg;if(quiet!==1){z.flash=1;z.stun=z.type==='boss'?0:stun;if(z.type!=='boss')z.wind=0}
  pushText(z.x,2.2*ZDEF[z.type].scale,z.z,String(Math.round(dmg)),dmg>=20?'#ffd23f':'#ffffff');
  if(!quiet&&!(P.fuse>0))P.sup=Math.min(100,P.sup+SUP_HIT*P.sg*DIFF[CFG.diff].sup);P.hp=Math.min(P.maxHp,P.hp+dmg*P.ls);
- if(z.hp<=0){z.dead=true;z.dying=z.type==='boss'?.8:.35;G.kills++;if(z.type==='boss')for(const o of alive()){o.dead=true;o.dying=.35;G.kills++}}
+ if(z.hp<=0){z.dead=true;z.dying=z.type==='boss'?.8:.35;G.kills++;killCoin(z);if(z.type==='boss')for(const o of alive()){o.dead=true;o.dying=.35;G.kills++;killCoin(o)}}
 }
 function hurtPlayer(dmg,fx,fz){
  const P=G.P;if(P.inv>0)return;
@@ -1297,7 +1299,7 @@ function setPhase(p){
  $('pause').style.display=p==='pause'?'grid':'none';
  $('end').style.display=p==='over'||p==='win'?'grid':'none';
  if(p==='over'||p==='win'){
-  const gain=CFG.mode==='infinity'?G.kills*5:Math.round(((G.room+1)*12+G.kills*2)*DIFF[CFG.diff].coin*(p==='win'?1.5:1)*(1+(CFG.level-1)*.25));SAVE.coins+=gain;SAVE.best=Math.max(SAVE.best||0,G.room+1);let unlockMsg='';if(p==='win'&&CFG.mode==='level'&&CFG.level>(SAVE.lvlDone||0)){SAVE.lvlDone=CFG.level;unlockMsg=CFG.level<LEVEL_WAVES.length?'Level '+(CFG.level+1)+' terbuka!':'Semua level selesai!'}save();
+  const gain=CFG.mode==='infinity'?(G.runCoins||0):Math.round(((G.room+1)*12+G.kills*2)*DIFF[CFG.diff].coin*(p==='win'?1.5:1)*(1+(CFG.level-1)*.25));if(CFG.mode!=='infinity')SAVE.coins+=gain;SAVE.best=Math.max(SAVE.best||0,G.room+1);let unlockMsg='';if(p==='win'&&CFG.mode==='level'&&CFG.level>(SAVE.lvlDone||0)){SAVE.lvlDone=CFG.level;unlockMsg=CFG.level<LEVEL_WAVES.length?'Level '+(CFG.level+1)+' terbuka!':'Semua level selesai!'}save();
   $('et').textContent=p==='win'?(CFG.mode==='level'?'Level '+CFG.level+' Selesai!':'Kota Selamat!'):'Kamu Kalah';
   const s=Math.floor(G.time%60).toString().padStart(2,'0');
   $('er').innerHTML=`<li>Karakter: <b>${currentCharacter().name}</b></li><li>Senjata: <b>${currentWeapon().name}</b></li><li>Ability: <b>${SPECIALS[G.special].name}</b></li><li>Wave dicapai: <b>${G.room+1}</b></li><li>Mode: <b>${CFG.mode==='level'?'Level '+CFG.level:'Infinity'} · ${DIFF[CFG.diff].name}</b></li><li>Koin didapat: <b>+${gain}</b></li><li>Zombie dikalahkan: <b>${G.kills}</b></li><li>Waktu: <b>${Math.floor(G.time/60)}:${s}</b></li><li>Peningkatan: <b>${G.ups.length?G.ups.join(', '):'—'}</b></li>${unlockMsg?'<li>Terbuka: <b>'+unlockMsg+'</b></li>':''}`;
@@ -1346,7 +1348,7 @@ function renderUpg(){const c=$('uc');c.innerHTML='';choices.forEach((u,i)=>{cons
 function hud(){
  const P=G.P,full=P.sup>=100;
  $('hp').firstChild.style.width=P.hp/P.maxHp*100+'%';$('hp').lastChild.textContent=`HP ${Math.ceil(P.hp)}/${P.maxHp}`;
- const fzd=P.fuse>0;$('sp').firstChild.style.width=(fzd?P.fuse/30*100:P.sup)+'%';$('sp').lastChild.textContent=fzd?'PEDANG ASSASSIN '+Math.ceil(P.fuse)+'s':full?SUPERS[selectedWeapon].name.toUpperCase()+' SIAP! (E)':'SUPER';$('loadoutHud').textContent=currentCharacter().name+' \u00b7 '+currentWeapon().name+' \u00b7 '+SPECIALS[G.special].name;$('bU').textContent=SUPERS[selectedWeapon].name;$('bU').style.fontSize='10px';$('sp').classList.toggle('full',full&&!fzd);$('sp').classList.toggle('fused',fzd);
+ const fzd=P.fuse>0;$('sp').firstChild.style.width=(fzd?P.fuse/30*100:P.sup)+'%';$('sp').lastChild.textContent=fzd?'PEDANG ASSASSIN '+Math.ceil(P.fuse)+'s':full?SUPERS[selectedWeapon].name.toUpperCase()+' SIAP! (E)':'SUPER';$('loadoutHud').textContent=currentCharacter().name+' \u00b7 '+currentWeapon().name+' \u00b7 '+SPECIALS[G.special].name+(CFG.mode==='infinity'?' \u00b7 \ud83e\ude99 +'+(G.runCoins||0):'');$('bU').textContent=SUPERS[selectedWeapon].name;$('bU').style.fontSize='10px';$('sp').classList.toggle('full',full&&!fzd);$('sp').classList.toggle('fused',fzd);
  $('rm').textContent='Wave '+(G.room+1)+(CFG.mode==='level'?'/'+LEVEL_WAVES[CFG.level-1]:'')+((G.room+1)%5===0?' \u2014 BOS: '+BOSSES[bossIndex(G.room+1)].name:'');
  const bz=G.zombies.find(z=>z.active&&!z.dead&&z.type==='boss'),bb=$('bb');bb.style.display=bz?'block':'none';if(bz)bb.firstChild.style.width=Math.max(0,bz.hp/bz.maxHp*100)+'%';$('rs').textContent=G.cleared?'Wave berikutnya: '+Math.ceil(G.waveBreak)+' detik':'Kalahkan semua zombie!';
  const tt=$('toast');tt.style.display=G.toast.t>0?'block':'none';tt.textContent=G.toast.text;
