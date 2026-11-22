@@ -385,7 +385,7 @@ const PRICE={sword:0,dual:600,katana:900,greatblade:1600,energy:2400,flame:3200,
 const DIFF={easy:{name:'Mudah',hp:.75,dm:.7,count:.75,coin:.7,sup:1},normal:{name:'Normal',hp:1,dm:1,count:1,coin:1,sup:.9},hard:{name:'Sulit',hp:1.35,dm:1.3,count:1.2,coin:1.5,sup:.8},nightmare:{name:'Neraka',hp:1.8,dm:1.7,count:1.4,coin:2.2,sup:.7}};
 // Bar super terisi jauh lebih lambat di semua mode (dulu +5 per pukulan); makin sulit makin lambat.
 const SUP_HIT=1.1,SUP_HURT=2.5;
-const LEVEL_WAVES=[5,6,7,8,9,10,10,10,10,10,8,9,10,10,10]; // Lv 1-10 kota (Lv 10 = dermaga laut); Lv 11-15 = pulau rahasia (terbuka setelah cutscene Lv 10) // tiap level pendek (5–10 wave), kesulitan naik lewat HP, damage, kecepatan, dan jenis zombie
+const LEVEL_WAVES=[5,6,7,8,9,10,10,10,10,1,8,9,10,10,10]; // Lv 1-10 kota (Lv 10 = dermaga laut); Lv 11-15 = pulau rahasia (terbuka setelah cutscene Lv 10) // tiap level pendek (5–10 wave), kesulitan naik lewat HP, damage, kecepatan, dan jenis zombie
 // ===== Akun tanpa email: nama pengguna + kata sandi, tersimpan di perangkat ini =====
 const ACC_KEY='zi_accounts_v1',CUR_KEY='zi_current_v1',GUEST_KEY='zi_save_v1';
 const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
