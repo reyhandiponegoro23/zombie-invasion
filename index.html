@@ -1145,6 +1145,7 @@ function startPushCut(P,zz){
  let z=zz;
  if(!z){z=G.zombies.find(q=>!q.active)||G.zombies[0];Object.assign(z,{active:true,dead:false,type:'brute',x:S[0]-14,z:S[1],vx:0,vz:0,hp:9999,maxHp:9999,dm:1,sm:1,flash:0,stun:0,atkCd:99,wind:0,delay:0,dying:0,pop:1,freeze:0,burn:0,burnT:0,burnM:1,busy:false,chg:0,abW:0})}
  z.freeze=0;z.burn=0;z.stun=0;z.delay=0;z.vx=z.vz=0;z.wind=0;
+ G.zombies.forEach(q=>{if(q!==z)q.active=false}); // zombie yang baru mati jangan ikut 'membeku' di layar
  const a=Math.PI/2+.2;
  G.cut={t:0,stage:0,d,S,P0:[P.x,P.z],Z0:[z.x,z.z],ZE:[S[0]-2.4,S[1]],z,vx:0,vy:0,vz:0,shoved:false,splashed:false,spin:0,fade:false,shk:0,lie:0,dist0:cam.dist,
   cp:[S[0]-1.2,3.4,S[1]+10],B:[Math.cos(a)*44.5,Math.sin(a)*44.5],ba:a};
@@ -1179,7 +1180,7 @@ function cutTick(dt){
   }
   if(t>=3.5)cutFade(c,true);
   if(t>=4.5){ // pindah ke laut lepas
-   c.stage=1;c.t1=t;setWorld('open');P.moving=false;P.x=0;P.z=0;P.y=-.5;P.ry=Math.PI*.8;c.lie=-1.45;pl.g.visible=true;
+   c.stage=1;c.t1=t;G.zombies.forEach(q=>q.active=false);G.fx.forEach(f=>f.active=false);setWorld('open');P.moving=false;P.x=0;P.z=0;P.y=-.5;P.ry=Math.PI*.8;c.lie=-1.45;pl.g.visible=true;
    $('cutCap').textContent='Terombang-ambing di tengah laut…';cutFade(c,false);AU.play('wave')}
  }else if(c.stage===1){
   const u=t-c.t1;
