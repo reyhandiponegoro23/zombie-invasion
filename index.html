@@ -917,7 +917,7 @@ function lobbyAnim(t){
 const bm=c=>new THREE.MeshBasicMaterial({color:c});
 const addM=(c,o)=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
 const NP=3200;
-const pMesh=new THREE.InstancedMesh(BOX,new THREE.MeshBasicMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}),NP);
+const pMesh=new THREE.InstancedMesh(new THREE.SphereGeometry(.5,7,5),new THREE.MeshBasicMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}),NP);
 pMesh.frustumCulled=false;scene.add(pMesh);
 const PD=Array.from({length:NP},()=>({a:false,x:0,y:0,z:0,vx:0,vy:0,vz:0,l:0,m:1,s:.2,g:0,r:1,gr:1,b:1}));
 let pI=0,renderLast=0;const _po=new THREE.Object3D(),_pc=new THREE.Color();
@@ -959,8 +959,8 @@ function zombieFx(o,z,i,d,t,dt){
  if(o.wasF&&!fr)burst(z.x,1.1*sc,z.z,26,ICE_C,5.5,4.5,.2*sc,.8,10);   // pecah!
  o.wasF=fr;
  // --- api ---
- o.fire.visible=bn;
- if(bn){const big=z.burn>1e8;o.fire.material.opacity=(big?.36:.28)+.1*Math.sin(t*20+i);o.fire.scale.set((big?1.9:1.65)+.2*Math.sin(t*17+i),(big?3.1:2.7)+.4*Math.sin(t*23+i),big?1.6:1.4);
+ o.fire.visible=false;
+ if(bn){const big=z.burn>1e8;
   const n=(big?3:2)+(R()<.5?1:0);for(let k=0;k<n;k++)emitP(z.x+(R()-.5)*1.1*sc,(.1+R()*1.9)*sc,z.z+(R()-.5)*1.1*sc,(R()-.5)*.8,1.6+R()*2.2,(R()-.5)*.8,.5+R()*.5,(big?.3:.24)*sc*(.6+R()*.9),FIRE_C[(R()*4)|0],0)}
 }
 
@@ -1078,7 +1078,7 @@ rot(box(bm('#ffb000'),[.36,.35,0],[.1,.24,.1],wFlame),-.4);rot(box(bm('#ffb000')
 box(bm('#ff4d1a'),[0,.95,0],[.24,1.35,.09],wFlame);box(bm('#ffb000'),[0,.95,.05],[.13,1.3,.04],wFlame);box(bm('#fff3a0'),[0,.95,.07],[.05,1.15,.03],wFlame);
 rot(box(bm('#ff4d1a'),[0,1.68,0],[.24,.24,.09],wFlame),Math.PI/4);
 [[.14,.7],[-.14,.95],[.14,1.2],[-.14,1.45]].forEach(([x,y])=>box(bm('#ff4d1a'),[x,y,0],[.08,.16,.1],wFlame));
-const fTongues=[.55,.85,1.15,1.45].map(y=>{const m=new THREE.Mesh(BOX,addM('#ff7a1a',.55));m.position.set(0,y,0);m.scale.set(.3,.5,.18);wFlame.add(m);return m});
+const fTongues=[.55,.85,1.15,1.45].map(y=>{const m=new THREE.Mesh(new THREE.ConeGeometry(.5,1,7),addM('#ff7a1a',.55));m.position.set(0,y,0);m.scale.set(.3,.5,.18);wFlame.add(m);return m});
 wFlame.userData={tongues:fTongues};
 // Frost Blade: bilah kristal es dengan serpihan runcing
 const wFrost=wg(pl.rig.armR);
