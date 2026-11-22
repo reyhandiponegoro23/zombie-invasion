@@ -1079,7 +1079,7 @@ function superFxPose(t){
 }
 
 // ===== Dunia lain: kota di tepi laut (Level 10), laut lepas, dan pulau besar (Level 11+) =====
-const WORLD_COL={city:{bg:'#06102e',near:48,far:145,exp:.92,sun:0xe6edff},sea:{bg:'#f0a56e',near:55,far:175,exp:1.0,sun:0xffd2a6},open:{bg:'#e08a62',near:40,far:170,exp:1.0,sun:0xffc7a0},island:{bg:'#8fdcff',near:60,far:180,exp:1.06,sun:0xfff4dd}};
+const WORLD_COL={city:{bg:'#06102e',near:48,far:145,exp:.92,sun:0xe6edff},sea:{bg:'#f0a56e',near:55,far:175,exp:1.0,sun:0xffd2a6},open:{bg:'#e69a6a',near:70,far:230,exp:.95,sun:0xffc7a0},island:{bg:'#8fdcff',near:60,far:180,exp:1.06,sun:0xfff4dd}};
 let curW='city';
 const SEA_X=34; // di dunia 'sea', kota dipotong di x=34 dan di sebelah timur ada laut
 const curWorld=()=>CFG.mode==='level'?(CFG.level>=11?'island':CFG.level===10?'sea':'city'):'city';
@@ -1093,21 +1093,23 @@ function cityClip(on){cityObjs.forEach(o=>{const u=o.userData;
   else if(l>=SEA_X-.01)o.visible=false;
   else{o.visible=true;o.scale.x=SEA_X-l;o.position.x=(l+SEA_X)/2}}
  else o.visible=u.ox<SEA_X-1})}
-const SEA_N=84,SEA_SZ=380,seaGeo=new THREE.PlaneGeometry(SEA_SZ,SEA_SZ,SEA_N,SEA_N);seaGeo.rotateX(-Math.PI/2);
+const SEA_N=100,SEA_SZ=240,seaGeo=new THREE.PlaneGeometry(SEA_SZ,SEA_SZ,SEA_N,SEA_N);seaGeo.rotateX(-Math.PI/2);
 const seaPos=seaGeo.attributes.position,seaCnt=seaPos.count,seaX=new Float32Array(seaCnt),seaZ=new Float32Array(seaCnt);
 for(let i=0;i<seaCnt;i++){seaX[i]=seaPos.getX(i);seaZ[i]=seaPos.getZ(i)}
 seaGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(seaCnt*3),3));const seaCol=seaGeo.attributes.color;
-const sea=new THREE.Mesh(seaGeo,new THREE.MeshPhongMaterial({color:0xffffff,vertexColors:true,flatShading:true,shininess:70,specular:0x99ccff,emissive:0x0a3d70}));
+const sea=new THREE.Mesh(seaGeo,new THREE.MeshPhongMaterial({color:0xffffff,vertexColors:true,flatShading:true,shininess:45,specular:0x5b8fbf,emissive:0x04264a}));
 sea.position.y=-1.4;sea.frustumCulled=false;waterGrp.add(sea);
-function seaUpdate(t){for(let i=0;i<seaCnt;i++){const x=seaX[i],z=seaZ[i],h=Math.sin(x*.16+t*1.3)*.3+Math.sin(z*.12+t*1.0)*.28+Math.sin((x+z)*.21+t*1.9)*.16,k=Math.max(0,Math.min(1,(h+.74)/1.48));
- seaPos.setY(i,h);seaCol.setXYZ(i,.12+.7*k*k*k,.5+.42*k,.82+.18*k)}
+const seaFar=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),new THREE.MeshPhongMaterial({color:'#1673b3',emissive:0x052c52,shininess:30}));seaFar.rotation.x=-Math.PI/2;seaFar.position.y=-1.55;waterGrp.add(seaFar);
+function seaUpdate(t){for(let i=0;i<seaCnt;i++){const x=seaX[i],z=seaZ[i],h=Math.sin(x*.34+t*1.5)*.34+Math.sin(z*.27+t*1.15)*.3+Math.sin((x+z)*.47+t*2.1)*.18+Math.sin((x-z)*.19+t*.8)*.2,k=Math.max(0,Math.min(1,(h+1.0)/2.0));
+ let r=.03+.34*k*k,g=.2+.55*k,b=.42+.5*k;if(k>.82){const f=(k-.82)/.18;r+=(1-r)*f*.85;g+=(1-g)*f*.85;b+=(1-b)*f*.7} // puncak ombak berbusa putih
+ seaPos.setY(i,h);seaCol.setXYZ(i,r,g,b)}
  seaPos.needsUpdate=true;seaCol.needsUpdate=true}
 // riak air (cincin yang melebar)
 const ripples=[];for(let i=0;i<8;i++){const m=new THREE.Mesh(new THREE.RingGeometry(.86,1,40),new THREE.MeshBasicMaterial({color:'#ffffff',transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));m.rotation.x=-Math.PI/2;m.visible=false;waterGrp.add(m);ripples.push({m,t:9,x:0,z:0,big:0})}
 let ripI=0;function ripple(x,z,big){const r=ripples[ripI++%ripples.length];r.t=0;r.x=x;r.z=z;r.big=big?1:0;r.m.visible=true}
 const foam=[],foamM=addM('#ffffff',.5);
 for(let i=0;i<90;i++){const f=new THREE.Mesh(BOX,foamM),a=i*2.399,r=10+((i*37)%110);f.userData={a,r};f.scale.set(3+(i%4)*2,.04,.5);f.position.set(Math.cos(a)*r,-1.36,Math.sin(a)*r);waterGrp.add(f);foam.push(f)}
-const sun=new THREE.Mesh(new THREE.SphereGeometry(14,16,12),new THREE.MeshBasicMaterial({color:'#ffe2a8',fog:false}));sun.position.set(90,20,-120);sun.visible=false;scene.add(sun);
+const sun=new THREE.Mesh(new THREE.SphereGeometry(14,16,12),new THREE.MeshBasicMaterial({color:'#ffe2a8',fog:false}));sun.position.set(-40,16,-190);sun.visible=false;scene.add(sun);
 const W_stone=mat('#8d97a8'),W_dark=mat('#3a4254'),W_wood=mat('#9a7448'),W_woodD=mat('#6b4c2c'),W_white=mat('#f2f4f8');
 const boats=[];
 // -- tepi laut di sisi timur kota: dinding dermaga beton, tiang tambat, perahu, mercusuar --
@@ -1172,6 +1174,12 @@ function startPushCut(P,zz){
  AU.play('big');
 }
 function cutFade(c,on){if(on&&!c.fade){c.fade=true;$('cutFade').classList.add('fade')}else if(!on&&c.fade){c.fade=false;$('cutFade').classList.remove('fade')}}
+// kunci gerak bangun: [detik, sudut badan, sudut kaki, sudut tangan] — telungkup → tangan di dada → push-up → pinggul naik → bangkit → berdiri
+const GETUP=[[0,1.5,0,-3.07],[1.8,1.5,0,-3.07],[2.6,1.5,0,-1.9],[3.5,1.38,-.75,-1.38],[4.2,1.0,-.6,-1.25],[5.0,.6,-.3,-.7],[5.6,.25,-.1,-.2],[6.2,0,0,0]];
+function poseBy(th,l,a){const cs=Math.cos,sn=Math.sin,Rz=(y,z)=>y*cs(th)-z*sn(th);
+ let m=Math.min(Rz(.7,0)-cs(l+th)*.9,Rz(1.42,0)-cs(a+th)*.75);
+ for(const q of[[.7,-.25],[.7,.25],[1.5,-.25],[1.5,.25],[1.5,-.3],[1.5,.3],[2.1,-.3],[2.1,.3]])m=Math.min(m,Rz(q[0],q[1]));
+ return -m}
 function cutTick(dt){
  const c=G.cut,P=G.P,z=c.z,d=c.d,R=Math.random;c.t+=dt;const t=c.t;
  G.req.super=G.req.attack=G.req.dash=G.req.special=false;c.shk=Math.max(0,c.shk-dt*2);
@@ -1208,18 +1216,19 @@ function cutTick(dt){
   if(u>=3.6&&u<3.7)AU.play('wave');
   if(u>=5.2)cutFade(c,true);
   if(u>=6.2){ // pindah ke pantai pulau
-   c.stage=2;c.t2=t;setWorld('island');P.x=c.B[0];P.z=c.B[1];P.y=c.Y0+.28;P.ry=Math.atan2(-Math.cos(c.ba),-Math.sin(c.ba));c.lie=1.45;c.aa=-2.9;
+   c.stage=2;c.t2=t;setWorld('island');P.x=c.B[0];P.z=c.B[1];P.y=c.Y0+.4;P.ry=Math.atan2(-Math.cos(c.ba),-Math.sin(c.ba));c.lie=1.5;c.aa=-3.07;c.la=0;
    $('cutCap').textContent='Terdampar di sebuah pulau…';cutFade(c,false);AU.play('wave')}
  }else{
-  const u=t-c.t2,KF=[[0,1.45],[2.2,1.45],[3.2,1.05],[3.7,1.0],[4.6,.45],[5.4,0]];
-  let th=1.45;for(let i=1;i<KF.length;i++)if(u<=KF[i][0]){const a=KF[i-1],b=KF[i],e=(u-a[0])/(b[0]-a[0]),sm=e*e*(3-2*e);th=a[1]+(b[1]-a[1])*sm;break}else th=KF[i][1];
-  c.lie=th;P.y=c.Y0+.28*(th/1.45)+(u<2.2?Math.sin(u*3.2)*.025:0);
-  // tangan: terentang di atas kepala -> menumpu ke tanah (lurus ke bawah) -> mengayun -> turun
-  c.aa=u<2.2?-2.9+Math.sin(u*3.2)*.06:u<2.9?-2.9+(-th+2.9)*((u-2.2)/.7):th>.03?-th:-.45*Math.sin(Math.min(1,Math.max(0,(u-5.4)/.9))*Math.PI);
-  if(u>=2.2&&!c.cap2){c.cap2=1;$('cutCap').textContent='Zombie laut mengintai di pulau ini\u2026'}
+  const u=t-c.t2,KF=GETUP;
+  let th=KF[0][1],l=KF[0][2],a=KF[0][3];
+  for(let i=1;i<KF.length;i++){if(u<=KF[i][0]){const A=KF[i-1],B=KF[i],e=Math.max(0,(u-A[0])/(B[0]-A[0])),sm=e*e*(3-2*e);th=A[1]+(B[1]-A[1])*sm;l=A[2]+(B[2]-A[2])*sm;a=A[3]+(B[3]-A[3])*sm;break}else{th=KF[i][1];l=KF[i][2];a=KF[i][3]}}
+  if(u<1.8){const br=Math.sin(u*3.2);a+=br*.05;th+=br*.01} // napas
+  else if(u>KF[KF.length-1][0])a=-.45*Math.sin(Math.min(1,(u-KF[KF.length-1][0])/.9)*Math.PI); // meregangkan tangan setelah berdiri
+  c.lie=th;c.la=l;c.aa=a;P.y=c.Y0+poseBy(th,l,a)+.03;
+  if(u>=1.8&&!c.cap2){c.cap2=1;$('cutCap').textContent='Zombie laut mengintai di pulau ini\u2026'}
   if(!c.rip2||u>=c.rip2){c.rip2=u+1.3;AU.play('wave')}
-  if(u>=6.4)cutFade(c,true);
-  if(u>=7.4)finishPush();
+  if(u>=7.0)cutFade(c,true);
+  if(u>=8.0)finishPush();
  }
 }
 function cutCam(){
@@ -1228,11 +1237,11 @@ function cutCam(){
   camera.position.set(c.cp[0]+(Math.random()-.5)*s,c.cp[1]+(Math.random()-.5)*s,c.cp[2]+(Math.random()-.5)*s);
   if(!c.shoved)camera.lookAt((P.x+z.x)/2,1.5,(P.z+z.z)/2);else camera.lookAt(P.x,Math.max(-.8,(P.y||0)+.9),P.z);
  }else if(c.stage===1){
-  const u=c.t-c.t1,an=.6+u*.28,r=9.5-u*.25;
-  camera.position.set(Math.cos(an)*r,1.6+u*.28,Math.sin(an)*r);camera.lookAt(P.x,P.y+.5,P.z);
+  const u=c.t-c.t1,an=.6+u*.26,r=7.4-u*.15;
+  camera.position.set(Math.cos(an)*r,.55+u*.09,Math.sin(an)*r);camera.lookAt(P.x,P.y+.55,P.z);
  }else{
-  const u=c.t-c.t2,k=Math.min(1,Math.max(0,(u-2.2)/3.2)),bx=c.B[0],bz=c.B[1],tx=-Math.sin(c.ba),tz=Math.cos(c.ba),rr=.93-.05*k,off=5.2+1.6*k;
-  camera.position.set(bx*rr+tx*off,c.Y0+.9+1.3*k,bz*rr+tz*off);camera.lookAt(bx*(.99),c.Y0+.4+.9*k,bz*.99);
+  const u=c.t-c.t2,k=Math.min(1,Math.max(0,(u-2.6)/3.4)),bx=c.B[0],bz=c.B[1],tx=-Math.sin(c.ba),tz=Math.cos(c.ba),rr=.93-.03*k,off=6.4+1.2*k;
+  camera.position.set(bx*rr+tx*off,c.Y0+1.1+.7*k,bz*rr+tz*off);camera.lookAt(bx*.99,c.Y0+.55+.6*k,bz*.99);
 }
 }
 function cutPose(t){
@@ -1241,7 +1250,7 @@ function cutPose(t){
  if(c.stage===0&&c.shoved){r.body.rotation.x=c.splashed?0:c.spin;r.armL.rotation.x=r.armR.rotation.x=-2.6;r.legL.rotation.x=Math.sin(t*20)*.9;r.legR.rotation.x=-Math.sin(t*20)*.9;if((P.y||0)<-2.2)pl.g.visible=false}
  else if(c.stage===0&&c.t>=1.1){r.armL.rotation.x=r.armR.rotation.x=-.4;r.body.rotation.x=-.12}
  else if(c.stage===1){r.armL.rotation.x=r.armR.rotation.x=-.15;r.legL.rotation.x=r.legR.rotation.x=0;r.body.rotation.x=0}
- else if(c.stage===2){r.armL.rotation.x=r.armR.rotation.x=c.aa||0;r.legL.rotation.x=r.legR.rotation.x=0;r.body.rotation.x=0}
+ else if(c.stage===2){r.armL.rotation.x=r.armR.rotation.x=c.aa||0;r.legL.rotation.x=r.legR.rotation.x=c.la||0;r.body.rotation.x=0}
 }
 function finishPush(){
  const c=G.cut;if(!c)return;G.cut=null;$('cut').classList.remove('on');cam.dist=c.dist0;pl.g.visible=true;pl.g.rotation.x=0;
