@@ -425,8 +425,8 @@ const SUPERS={
   for(let i=0;i<=8;i++)pushGhost(sx+(ex-sx)*i/8,sz+(ez-sz)*i/8,P.ry);
   pushSlash(sx,sz,P.ry,1,2.2);pushSlash(ex,ez,P.ry+Math.PI,2,2.2);pushFx(ex,ez,5,'#ff7ab8');P.x=ex;P.z=ez;P.inv=Math.max(P.inv,1);G.shake=.9;P.swing=.4;P.combo=3;
   for(const z of alive())if(Math.hypot(z.x-ex,z.z-ez)<4.5+ZDEF[z.type].scale*.4)hitZombie(z,40*m,8,ex,ez,.6,2)}},
- flame:{name:'Ledakan Api',desc:'Ledakan api membakar zombie di sekitar: damage awal + terbakar terus sampai mati.',run(P){const m=P.dm*supM();P.inv=Math.max(P.inv,.8);pushFx(P.x,P.z,10,'#ff7a2f');pushFx(P.x,P.z,6,'#ffd23f');pushSlash(P.x,P.z,P.ry,3,3);G.shake=1.1;P.swing=.4;P.combo=3;for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<10+ZDEF[z.type].scale*.4){hitZombie(z,60*m,9,P.x,P.z,.7,2);z.burn=1e9;z.burnT=.2;z.burnM=m}}},
- frost:{name:'Zona Beku',desc:'Gelombang es membekukan zombie di sekitar 3,5 detik (bos 1,8 detik).',run(P){const m=P.dm*supM();P.inv=Math.max(P.inv,.8);pushFx(P.x,P.z,13,'#7ad7ff');pushFx(P.x,P.z,8,'#ffffff');pushSlash(P.x,P.z,P.ry,3,3.4);screenFlash();G.shake=.9;P.swing=.4;P.combo=3;for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<13+ZDEF[z.type].scale*.4){hitZombie(z,50*m,3,P.x,P.z,0,2);z.freeze=z.type==='boss'?1.8:3.5;z.wind=0}}}
+ flame:{name:'Putaran Neraka',desc:'Berputar menebas ke segala arah: gelombang api tebal menyapu seluruh map, mengenai semua zombie dan membuat mereka terbakar sampai mati.',run(P){P.inv=Math.max(P.inv,1.6);P.swing=0;G.shake=Math.max(G.shake,.6);startFlameSuper(P,P.dm*supM())}},
+ frost:{name:'Hentakan Beku',desc:'Menghentakkan kaki ke tanah: gelombang es membekukan seluruh map (semua zombie beku 4,5 detik, bos 2,2 detik) dan menumbuhkan es di arena.',run(P){P.inv=Math.max(P.inv,1.6);P.swing=0;G.shake=Math.max(G.shake,.4);startFrostSuper(P,P.dm*supM())}}
 };
 const pushBolt=(x,z)=>{const b=G.bolts.find(q=>!q.active)||G.bolts[0];Object.assign(b,{active:true,x,z,t:0,off:Array.from({length:8},()=>[(Math.random()-.5)*.9,(Math.random()-.5)*.9])})};
 let flashEl=null;
@@ -488,7 +488,7 @@ function spawnRoom(){
 }
 function startRun(){
  G.P=mkP();G.special=abilityIdx();G.room=0;G.kills=0;G.time=0;G.shake=0;G.ups=[];
- G.texts.forEach(t=>t.active=false);G.fx.forEach(f=>f.active=false);G.beams.forEach(b=>b.active=false);G.awk=null;$('awk').classList.remove('on');
+ G.texts.forEach(t=>t.active=false);G.fx.forEach(f=>f.active=false);G.beams.forEach(b=>b.active=false);G.awk=null;G.sfx=null;$('awk').classList.remove('on');
  G.req={attack:false,dash:false,special:false,super:false};
  spawnRoom();G.camSnap=true;setPhase('play');toast('Wave 1 — kalahkan semua zombie!');
 }
@@ -513,6 +513,7 @@ function update(dtRaw){
  if(G.phase!=='play')return;
  if(G.awk){awakenTick(Math.min(dtRaw,.05));return}   // waktu berhenti selama cutscene
  const dt=Math.min(dtRaw,.05),P=G.P;G.time+=dt;
+ superFxTick(dt);
  P.atkCd-=dt;P.comboT-=dt;P.dashT-=dt;P.dashCd-=dt;P.spCd-=dt;P.inv-=dt;P.hurt-=dt;P.swing-=dt;
  if(P.fuse>0){P.fuse-=dt;P.sup=0;if(P.fuse<=0){P.fuse=0;pushFx(P.x,P.z,5,'#c084fc');toast('Bilah kembali menjadi dua')}}
  G.shake=Math.max(0,G.shake-dt*2.5);G.toast.t-=dt;
@@ -915,7 +916,7 @@ function lobbyAnim(t){
 // ===== Efek visual: partikel api/es, balok es di zombie, dan model 3D unik tiap pedang =====
 const bm=c=>new THREE.MeshBasicMaterial({color:c});
 const addM=(c,o)=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:o,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
-const NP=700;
+const NP=3200;
 const pMesh=new THREE.InstancedMesh(BOX,new THREE.MeshBasicMaterial({transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}),NP);
 pMesh.frustumCulled=false;scene.add(pMesh);
 const PD=Array.from({length:NP},()=>({a:false,x:0,y:0,z:0,vx:0,vy:0,vz:0,l:0,m:1,s:.2,g:0,r:1,gr:1,b:1}));
@@ -959,8 +960,81 @@ function zombieFx(o,z,i,d,t,dt){
  o.wasF=fr;
  // --- api ---
  o.fire.visible=bn;
- if(bn){o.fire.material.opacity=.15+.1*Math.sin(t*20+i);o.fire.scale.set(1.35+.15*Math.sin(t*17+i),2.3+.35*Math.sin(t*23+i),1.15);
-  const n=R()<.5?2:1;for(let k=0;k<n;k++)emitP(z.x+(R()-.5)*.9*sc,(.2+R()*1.7)*sc,z.z+(R()-.5)*.9*sc,(R()-.5)*.7,1.6+R()*1.8,(R()-.5)*.7,.45+R()*.4,(.15+R()*.2)*sc,FIRE_C[(R()*4)|0],0)}
+ if(bn){const big=z.burn>1e8;o.fire.material.opacity=(big?.36:.28)+.1*Math.sin(t*20+i);o.fire.scale.set((big?1.9:1.65)+.2*Math.sin(t*17+i),(big?3.1:2.7)+.4*Math.sin(t*23+i),big?1.6:1.4);
+  const n=(big?3:2)+(R()<.5?1:0);for(let k=0;k<n;k++)emitP(z.x+(R()-.5)*1.1*sc,(.1+R()*1.9)*sc,z.z+(R()-.5)*1.1*sc,(R()-.5)*.8,1.6+R()*2.2,(R()-.5)*.8,.5+R()*.5,(big?.3:.24)*sc*(.6+R()*.9),FIRE_C[(R()*4)|0],0)}
+}
+
+// ===== Animasi super khusus: Hentakan Beku (Frost) & Putaran Neraka (Flame) =====
+const SFX_R=HALF*1.5,SFX_SPD=38;
+const iceFloor=new THREE.Mesh(new THREE.CircleGeometry(1,56),new THREE.MeshBasicMaterial({color:'#a8e6ff',transparent:true,opacity:.4,depthWrite:false,fog:false}));
+iceFloor.rotation.x=-Math.PI/2;iceFloor.position.y=.07;iceFloor.visible=false;scene.add(iceFloor);
+const sfxRing=new THREE.Mesh(new THREE.RingGeometry(.9,1,64),addM('#ffffff',.9));sfxRing.rotation.x=-Math.PI/2;sfxRing.position.y=.3;sfxRing.visible=false;scene.add(sfxRing);
+const sfxRing2=new THREE.Mesh(new THREE.RingGeometry(.72,1,64),addM('#ff7a1a',.6));sfxRing2.rotation.x=-Math.PI/2;sfxRing2.position.y=.28;sfxRing2.visible=false;scene.add(sfxRing2);
+const sfxGlow=new THREE.Mesh(new THREE.CircleGeometry(1,56),addM('#ff5a10',.3));sfxGlow.rotation.x=-Math.PI/2;sfxGlow.position.y=.1;sfxGlow.visible=false;scene.add(sfxGlow);
+const SPK=Array.from({length:48},(_,i)=>{const g=new THREE.ConeGeometry(.55,1,5);g.translate(0,.5,0);const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:i%2?'#e8fbff':'#8fdcff',transparent:true,opacity:.85,depthWrite:false,fog:false}));m.visible=false;scene.add(m);return{m,x:0,z:0,h:1,w:1,at:0,on:false,rot:0}});
+const sfxCol=['#ff4d00','#ff9a1a','#ffd23f','#ff6a00'];
+function startFrostSuper(P,m){G.sfx={k:'frost',t:0,r:0,m,done:new Set(),stomped:false,x:P.x,z:P.z,life:6.4};SPK.forEach(s=>{s.on=false;s.m.visible=false})}
+function startFlameSuper(P,m){G.sfx={k:'flame',t:0,r:0,m,done:new Set(),stomped:false,x:P.x,z:P.z,life:2.8,ang:P.ry,sl:0,n:0};}
+function superFxTick(dt){
+ const S=G.sfx;if(!S)return;const P=G.P,R=Math.random;S.t+=dt;
+ if(S.k==='frost'){
+  const T0=.55;
+  if(S.t<T0){ // mengangkat kaki: serpihan es berkumpul
+   for(let k=0;k<4;k++){const a=R()*6.283,d=2+R()*2.5;emitP(P.x+Math.cos(a)*d,.2+R()*.6,P.z+Math.sin(a)*d,-Math.cos(a)*3,1.5+R()*1.5,-Math.sin(a)*3,.5,.18+R()*.12,ICE_C[(R()*4)|0],0)}
+   return}
+  if(!S.stomped){
+   S.stomped=true;S.x=P.x;S.z=P.z;G.shake=Math.max(G.shake,2.2);AU.play('frost');screenFlash();
+   pushFx(S.x,S.z,6,'#ffffff');pushSlash(S.x,S.z,P.ry,3,3.4);burst(S.x,.3,S.z,60,ICE_C,9,5,.35,.9,9);
+   const zs2=alive();SPK.forEach((s,i)=>{let x,z;
+    if(i<zs2.length*2&&zs2.length){const zz=zs2[i%zs2.length],a=R()*6.283;x=zz.x+Math.cos(a)*1.4;z=zz.z+Math.sin(a)*1.4}
+    else{const a=R()*6.283,d=Math.sqrt(R())*(HALF-2);x=S.x+Math.cos(a)*d;z=S.z+Math.sin(a)*d}
+    x=Math.max(-HALF+1,Math.min(HALF-1,x));z=Math.max(-HALF+1,Math.min(HALF-1,z));
+    Object.assign(s,{x,z,h:1.8+R()*3,w:.9+R()*.8,at:Math.hypot(x-S.x,z-S.z)/SFX_SPD,on:false,rot:R()*6.28})});
+   S.sp=0}
+  const tt=S.t-T0;S.r=Math.min(SFX_R,tt*SFX_SPD);
+  for(const z of alive()){if(S.done.has(z))continue;const d=Math.hypot(z.x-S.x,z.z-S.z);if(d<=S.r){S.done.add(z);
+   hitZombie(z,55*S.m,2,S.x,S.z,0,2);if(!z.dead){z.freeze=z.type==='boss'?2.2:4.5;z.wind=0;z.stun=0}}}
+  SPK.forEach(s=>{if(!s.on&&tt>=s.at){s.on=true;s.t0=S.t;burst(s.x,.2,s.z,6,ICE_C,3,3,.22,.5,8)}});
+  if(S.r<SFX_R)for(let k=0;k<22;k++){const a=R()*6.283;emitP(S.x+Math.cos(a)*S.r,.2+R()*.5,S.z+Math.sin(a)*S.r,Math.cos(a)*2,2+R()*3,Math.sin(a)*2,.6+R()*.4,.3+R()*.25,ICE_C[(R()*4)|0],2)}
+  else if(R()<.5){const a=R()*6.283,d=R()*HALF;emitP(S.x+Math.cos(a)*d,.3,S.z+Math.sin(a)*d,0,.6+R(),0,1.2,.14,ICE_C[(R()*4)|0],-.3)} // kabut dingin
+ }else{
+  S.ang+=26*dt;S.sl-=dt;
+  if(S.t<1.0){ // berputar: tebasan ke segala arah
+   if(S.sl<=0){S.sl=.055;S.n++;pushSlash(P.x,P.z,S.ang+(S.n%2?Math.PI:0),1+(S.n%3),3.6)}
+   for(let k=0;k<6;k++){const a=S.ang+R()*1.2,d=1.5+R()*3.5;emitP(P.x+Math.sin(a)*d,.4+R()*1.6,P.z+Math.cos(a)*d,Math.cos(a)*5,1+R()*2,-Math.sin(a)*5,.5+R()*.3,.4+R()*.3,sfxCol[(R()*4)|0],0)}
+  }
+  if(S.t>=.2){
+   if(!S.stomped){S.stomped=true;S.x=P.x;S.z=P.z;G.shake=Math.max(G.shake,1.8);AU.play('flameSuper');pushFx(S.x,S.z,8,'#ff7a2f');pushFx(S.x,S.z,4,'#ffd23f');burst(S.x,.4,S.z,70,FIRE_C,9,6,.55,.8,-2)}
+   const tt=S.t-.2;S.r=Math.min(SFX_R,tt*SFX_SPD);
+   for(const z of alive()){if(S.done.has(z))continue;const d=Math.hypot(z.x-S.x,z.z-S.z);if(d<=S.r){S.done.add(z);
+    hitZombie(z,80*S.m,9,S.x,S.z,.7,2);if(!z.dead){z.burn=1e9;z.burnT=.2;z.burnM=S.m;burst(z.x,1.2,z.z,26,FIRE_C,5,5,.5,.8,-3)}}}
+   if(S.r<SFX_R)for(let k=0;k<34;k++){const a=R()*6.283,rr=S.r-R()*3;emitP(S.x+Math.cos(a)*rr,.3+R()*.9,S.z+Math.sin(a)*rr,Math.cos(a)*1.5,2.5+R()*4,Math.sin(a)*1.5,.6+R()*.5,.55+R()*.5,sfxCol[(R()*4)|0],0)}
+  }
+ }
+ if(S.t>S.life)G.sfx=null;
+}
+function superFxRender(t){
+ const S=G.sfx,fr=S&&S.k==='frost'&&S.stomped,fl=S&&S.k==='flame'&&S.stomped;
+ iceFloor.visible=!!fr;sfxRing.visible=!!S&&S.stomped&&S.r<SFX_R;sfxRing2.visible=!!fl&&S.r<SFX_R;sfxGlow.visible=!!fl;
+ if(!S){SPK.forEach(s=>{if(s.m.visible)s.m.visible=false});return}
+ if(fr){const fade=Math.min(1,(S.life-S.t)/1.5);iceFloor.position.set(S.x,.07,S.z);iceFloor.scale.set(Math.max(.01,S.r),Math.max(.01,S.r),1);iceFloor.material.opacity=.42*fade;
+  sfxRing.material.color.set('#e8fbff');sfxRing.position.set(S.x,.3,S.z);sfxRing.scale.set(Math.max(.01,S.r),Math.max(.01,S.r),1);
+  SPK.forEach(s=>{if(!s.on){s.m.visible=false;return}const age=S.t-s.t0,g=Math.min(1,age/.22),f=Math.min(1,Math.max(0,(S.life-S.t)/1.3)),e=g*(2-g)*f;
+   s.m.visible=e>.01;s.m.position.set(s.x,0,s.z);s.m.rotation.y=s.rot;s.m.scale.set(s.w*e,s.h*e,s.w*e)})}
+ else if(fl){const fade=Math.min(1,(S.life-S.t)/1.2);
+  sfxRing.material.color.set('#ffd23f');sfxRing.position.set(S.x,.3,S.z);sfxRing.scale.set(Math.max(.01,S.r),Math.max(.01,S.r),1);
+  sfxRing2.position.set(S.x,.28,S.z);sfxRing2.scale.set(Math.max(.01,S.r+2.5),Math.max(.01,S.r+2.5),1);
+  sfxGlow.position.set(S.x,.1,S.z);sfxGlow.scale.set(Math.max(.01,S.r),Math.max(.01,S.r),1);sfxGlow.material.opacity=.3*fade*(.8+.2*Math.sin(t*25))}
+}
+// pose karakter selama super: Frost = angkat kaki lalu menghentak; Flame = berputar dengan tangan terentang
+function superFxPose(t){
+ const S=G.sfx;if(!S)return;const r=pl.rig;
+ if(S.k==='frost'&&S.t<1.0){
+  if(S.t<.55){const e=S.t/.55,q=e*e;r.legR.rotation.x=-1.5*q;r.legL.rotation.x=.12*q;r.armL.rotation.x=r.armR.rotation.x=-.7-1.9*q;r.body.position.y=.12*q;r.body.rotation.x=-.18*q}
+  else{const e=Math.max(0,1-(S.t-.55)/.22);r.legR.rotation.x=-1.5*e+.25*(1-e);r.legL.rotation.x=0;r.armL.rotation.x=r.armR.rotation.x=-.7+(-1.9*e+.9*(1-e));r.body.position.y=-.2*(1-e)*(S.t<.8?1:0);r.body.rotation.x=.45*(1-e)*(S.t<.8?1:0)}
+ }else if(S.k==='flame'&&S.t<1.0){
+  pl.g.rotation.y=S.ang;r.armR.rotation.x=r.armL.rotation.x=-1.55;r.body.rotation.x=.18;r.legL.rotation.x=Math.sin(t*30)*.7;r.legR.rotation.x=-Math.sin(t*30)*.7;r.body.rotation.y=0
+ }
 }
 
 // tiang cahaya aura di sekitar karakter saat awakening
@@ -1040,7 +1114,7 @@ function weaponFx(t,P,dt){
  if(!pl.g.visible)return;
  pl.g.updateMatrixWorld(true);
  let tp;
- if(w==='flame'){for(let k=0;k<(sg?3:2);k++){tp=tipOf(wFlame,1.3+R()*.4);emitP(tp.x+(R()-.5)*.2,tp.y,tp.z+(R()-.5)*.2,(R()-.5)*.8,1.3+R()*1.6,(R()-.5)*.8,.4+R()*.3,.12+R()*.16,FIRE_C[(R()*4)|0],0)}}
+ if(w==='flame'){for(let k=0;k<(sg?5:3);k++){tp=tipOf(wFlame,1.3+R()*.4);emitP(tp.x+(R()-.5)*.25,tp.y,tp.z+(R()-.5)*.25,(R()-.5)*.9,1.3+R()*1.8,(R()-.5)*.9,.45+R()*.35,.2+R()*.22,FIRE_C[(R()*4)|0],0)}}
  else if(w==='frost'){tp=tipOf(wFrost,1.1+R()*.7);emitP(tp.x+(R()-.5)*.3,tp.y,tp.z+(R()-.5)*.3,(R()-.5)*.5,-.1,(R()-.5)*.5,.7,.07+R()*.07,ICE_C[(R()*4)|0],1.2);
   if(sg){tp=tipOf(wFrost,1.8);emitP(tp.x,tp.y,tp.z,(R()-.5)*2,R()*1.2,(R()-.5)*2,.5,.12,'#ffffff',2)}}
  else if(w==='energy'){tp=tipOf(wEnergy,.6+R()*1.2);const a=R()*6.28;emitP(tp.x,tp.y,tp.z,Math.cos(a)*1.4,(R()-.3)*1.2,Math.sin(a)*1.4,.4,.08+R()*.06,R()<.5?'#c084fc':'#4df0ff',0)}
@@ -1063,7 +1137,7 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
  const P=G.P;
  pl.g.position.set(P.x,P.y||0,P.z);pLight.position.set(P.x,3.5,P.z);pl.g.rotation.y=lerpAng(pl.g.rotation.y,P.ry,.35);
  if(G.awk){const e=Math.min(1,G.awk.t/.6);pl.g.position.y=(P.y||0)+.6*e+Math.sin(t*30)*.03*e;pLight.color.set(G.awk.col);pLight.intensity=1.05+3.2*e}else if(pLight.intensity!==1.05){pLight.intensity=1.05;pLight.color.set(0xfff3d0)}
- awkAuraFx(t,P);
+ awkAuraFx(t,P);superFxRender(t);
  const runWave=P.moving?Math.sin(t*15)*.95:Math.sin(t*2)*.035;
  const w=P.dashT>0?1.15:runWave;
  pl.rig.legL.rotation.x=w;pl.rig.legR.rotation.x=-w;
@@ -1085,6 +1159,7 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
  pl.rig.body.rotation.y=spin+(P.moving?Math.sin(t*7)*.035:0);
  pl.rig.body.position.y=P.moving?Math.abs(Math.sin(t*15))*.075:Math.sin(t*2)*.018;
  pl.rig.body.rotation.x=P.dashT>0?1.15:(P.swing>0?.45*Math.sin(Math.PI*Math.min(1,Math.max(0,1-P.swing/.25))):0);
+ superFxPose(t);
  pm.shirt.color.set(currentCharacter().color).lerp(pRed,Math.max(0,P.hurt)/.3);
   sw.scale.set(fused?1.55:selectedWeapon==='greatblade'?1.35:selectedWeapon==='energy'?1.08:1,fused?1.4:selectedWeapon==='greatblade'?1.18:1,fused?1.5:1);
   sw.children[2].material.color.set(fused?'#f0d6ff':selectedWeapon==='dual'?'#c084fc':currentWeapon().color);
@@ -1222,7 +1297,7 @@ function setPhase(p){
  $('pause').style.display=p==='pause'?'grid':'none';
  $('end').style.display=p==='over'||p==='win'?'grid':'none';
  if(p==='over'||p==='win'){
-  const gain=Math.round(((G.room+1)*12+G.kills*2)*DIFF[CFG.diff].coin*(p==='win'?1.5:1)*(CFG.mode==='level'?1+(CFG.level-1)*.25:1));SAVE.coins+=gain;SAVE.best=Math.max(SAVE.best||0,G.room+1);let unlockMsg='';if(p==='win'&&CFG.mode==='level'&&CFG.level>(SAVE.lvlDone||0)){SAVE.lvlDone=CFG.level;unlockMsg=CFG.level<LEVEL_WAVES.length?'Level '+(CFG.level+1)+' terbuka!':'Semua level selesai!'}save();
+  const gain=CFG.mode==='infinity'?G.kills*5:Math.round(((G.room+1)*12+G.kills*2)*DIFF[CFG.diff].coin*(p==='win'?1.5:1)*(1+(CFG.level-1)*.25));SAVE.coins+=gain;SAVE.best=Math.max(SAVE.best||0,G.room+1);let unlockMsg='';if(p==='win'&&CFG.mode==='level'&&CFG.level>(SAVE.lvlDone||0)){SAVE.lvlDone=CFG.level;unlockMsg=CFG.level<LEVEL_WAVES.length?'Level '+(CFG.level+1)+' terbuka!':'Semua level selesai!'}save();
   $('et').textContent=p==='win'?(CFG.mode==='level'?'Level '+CFG.level+' Selesai!':'Kota Selamat!'):'Kamu Kalah';
   const s=Math.floor(G.time%60).toString().padStart(2,'0');
   $('er').innerHTML=`<li>Karakter: <b>${currentCharacter().name}</b></li><li>Senjata: <b>${currentWeapon().name}</b></li><li>Ability: <b>${SPECIALS[G.special].name}</b></li><li>Wave dicapai: <b>${G.room+1}</b></li><li>Mode: <b>${CFG.mode==='level'?'Level '+CFG.level:'Infinity'} · ${DIFF[CFG.diff].name}</b></li><li>Koin didapat: <b>+${gain}</b></li><li>Zombie dikalahkan: <b>${G.kills}</b></li><li>Waktu: <b>${Math.floor(G.time/60)}:${s}</b></li><li>Peningkatan: <b>${G.ups.length?G.ups.join(', '):'—'}</b></li>${unlockMsg?'<li>Terbuka: <b>'+unlockMsg+'</b></li>':''}`;
@@ -1450,6 +1525,8 @@ const AU=(()=>{
   pick(){tone(880,.1,'square',.09);tone(1320,.14,'square',.09,1,.08)},
   win(){[523,659,784,1047,1319].forEach((f,i)=>tone(f,.34,'triangle',.17,1,i*.12))},
   over(){[392,330,262,196].forEach((f,i)=>tone(f,.4,'sawtooth',.13,.9,i*.2,undefined,900))},
+  frost(){tone(60,.7,'sine',.6,.4);noise(.25,.45,1200,300,'lowpass');noise(.9,.3,6000,1800,'highpass',.04);[1568,2093,2637,3136].forEach((f,i)=>tone(f,.45,'triangle',.07,.8,.1+i*.06))},
+  flameSuper(){noise(1.2,.4,300,2200,'bandpass');tone(80,1,'sawtooth',.2,.35,0,undefined,600);tone(160,.9,'sawtooth',.1,2,.1,undefined,1500);noise(.6,.35,900,120,'lowpass',.15)},
   buy(){tone(988,.08,'square',.09);tone(1319,.08,'square',.09,1,.07);tone(1760,.18,'square',.09,1,.14)}
  };
  const TK={hit:45,kill:55,swing:60,hurt:120,dash:100};
