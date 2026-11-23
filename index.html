@@ -384,7 +384,10 @@ const WEAPONS={
 };
 let selectedCharacter='fighter',selectedWeapon='sword';
 const LX=400; // posisi lobi 3D (jauh dari arena)
-const PRICE={sword:0,dual:600,katana:900,greatblade:1600,energy:2400,flame:3200,frost:4200};
+const PRICE={sword:0,dual:600,katana:900,greatblade:1600,energy:2400};
+// Flame Sword & Frost Blade tidak dijual lagi: jadi hadiah drop setelah wave terakhir Level 5 dan Level 7 (mode Level).
+// Kalau pedangnya sudah dimiliki, drop berubah menjadi koin.
+const LEVEL_REWARD={5:'flame',7:'frost'},REWARD_COIN=1000;
 const DIFF={easy:{name:'Mudah',hp:.75,dm:.7,count:.75,coin:.7,sup:1},normal:{name:'Normal',hp:1,dm:1,count:1,coin:1,sup:.9},hard:{name:'Sulit',hp:1.35,dm:1.3,count:1.2,coin:1.5,sup:.8},nightmare:{name:'Neraka',hp:1.8,dm:1.7,count:1.4,coin:2.2,sup:.7}};
 // Bar super terisi jauh lebih lambat di semua mode (dulu +5 per pukulan); makin sulit makin lambat.
 const SUP_HIT=1.1,SUP_HURT=2.5;
@@ -480,8 +483,9 @@ function weaponProc(z,P){
 function offerUpgrades(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.random()-.5).slice(0,3);$('upg').querySelector('h1').textContent=boss?'Bos kalah! Pilih peningkatan':'Wave selesai! Pilih peningkatan';setPhase('upgrade');renderUpg()}
 function pick(i){const u=choices[i];u[2](G.P);G.ups.push(u[0]);bossPick=false;toast('Dipilih: '+u[0]);setPhase('play')}
 const toast=t=>{G.toast.text=t;G.toast.t=2.4};
-// Infinity: tiap zombie yang dikalahkan langsung memberi 5 koin
-function killCoin(z){if(CFG.mode!=='infinity')return;SAVE.coins+=5;G.runCoins=(G.runCoins||0)+5;pushText(z.x,2.8*ZDEF[z.type].scale,z.z,'+5 \ud83e\ude99','#ffd23f');save()}
+// Infinity: tiap zombie yang dikalahkan langsung memberi 50 koin
+const INF_COIN=50;
+function killCoin(z){if(CFG.mode!=='infinity')return;SAVE.coins+=INF_COIN;G.runCoins=(G.runCoins||0)+INF_COIN;pushText(z.x,2.8*ZDEF[z.type].scale,z.z,'+'+INF_COIN+' \ud83e\ude99','#ffd23f');save()}
 const pushText=(x,y,z,text,color)=>{const t=G.texts.find(s=>!s.active)||G.texts[0];Object.assign(t,{active:true,x:x+(Math.random()-.5)*.6,y,z,t:0,text,color})};
 const pushFx=(x,z,max,color)=>{const f=G.fx.find(s=>!s.active)||G.fx[0];Object.assign(f,{active:true,x,z,t:0,max,color})};
 const pushSlash=(x,z,ry,kind,sc)=>{const s=G.slashes.find(q=>!q.active)||G.slashes[0];Object.assign(s,{active:true,x,z,ry,t:0,kind,sc})};
@@ -516,7 +520,7 @@ function waveMul(n,type){const b=type==='boss'?Math.min(1+.38*(n/5-1),5):Math.mi
 function scaleList(l){const n=Math.max(1,Math.min(26,Math.round(l.length*DIFF[CFG.diff].count)));if(n<=l.length)return l.slice(0,n);const pool=l.filter(t=>t!=='boss'),out=l.slice();while(out.length<n)out.push(pool[Math.floor(Math.random()*pool.length)]||'normal');return out}
 function spawnOne(type,x,zz,mu){const z=G.zombies.find(s=>!s.active);if(!z)return;const d=ZDEF[type];Object.assign(z,{active:true,dead:false,type,x,z:zz,vx:0,vz:0,hp:d.hp*mu.hp,maxHp:d.hp*mu.hp,dm:mu.dm,sm:mu.sm,sum:6,flash:0,stun:0,atkCd:1,wind:0,delay:.6,dying:0,pop:0,freeze:0,burn:0,burnT:0,burnM:1})}
 function spawnRoom(){
- G.zombies.forEach(z=>z.active=false);G.cleared=false;G.waveBreak=0;
+ G.zombies.forEach(z=>z.active=false);G.cleared=false;G.waveBreak=0;resetDrop();
  scaleList(waveList(G.room+1,CFG.mode==='level'?(CFG.level-1)*4:0)).forEach(type=>{
   const z=G.zombies.find(s=>!s.active);if(!z)return;
   const d=ZDEF[type],mu=waveMul(G.room+1,type),side=Math.floor(Math.random()*4),edge=25,offset=(Math.random()-.5)*48;
@@ -635,9 +639,11 @@ function update(dtRaw){
  if(!G.cleared&&al.length===0&&G.zombies.every(z=>!z.active||z.dead)){
   G.cleared=true;G.waveBreak=7;
   const wv=G.room+1;P.hp=Math.min(P.maxHp,P.hp+(wv%5===0?P.maxHp*.4:15));
-  if(CFG.mode==='level'&&wv>=LEVEL_WAVES[CFG.level-1]){setPhase('win')}else{toast('Wave '+wv+' selesai! Wave berikutnya dalam 7 detik');offerUpgrades(wv%5===0)}
+  if(CFG.mode==='level'&&wv>=LEVEL_WAVES[CFG.level-1]){if(LEVEL_REWARD[CFG.level])spawnDrop(P,LEVEL_REWARD[CFG.level]);else setPhase('win')}else{toast('Wave '+wv+' selesai! Wave berikutnya dalam 7 detik');offerUpgrades(wv%5===0)}
  }
- if(G.cleared&&G.phase==='play'){
+ if(G.drop)dropTick(dt,P);
+ if(G.winIn!=null){G.winIn-=dt;if(G.winIn<=0){G.winIn=null;setPhase('win')}}
+ if(G.cleared&&G.phase==='play'&&!G.drop&&G.winIn==null){
   G.waveBreak=Math.max(0,G.waveBreak-dt);
   if(G.waveBreak<=0){
    G.room++;spawnRoom();
@@ -1401,6 +1407,59 @@ function awkAuraFx(t,P){
 // ===== model 3D unik untuk tiap pedang =====
 const wg=(arm)=>{const g=new THREE.Group();g.position.set(0,-.62,.05);g.rotation.x=Math.PI/2;g.visible=false;arm.add(g);return g};
 const rot=(m,z)=>{m.rotation.z=z;return m};
+// ===== Drop hadiah fisik: Lv 5 = Flame Sword, Lv 7 = Frost Blade (mode Level, muncul setelah wave terakhir) =====
+const dropG=new THREE.Group();dropG.visible=false;scene.add(dropG);
+const dropBeam=box(addM('#ffffff',.2),[0,9,0],[1.6,18,1.6],dropG);
+const dropRing=box(addM('#ffffff',.45),[0,.08,0],[3,.06,3],dropG);
+const dropItem=new THREE.Group();dropG.add(dropItem);
+function mkDropSword(c){
+ const g=new THREE.Group();
+ box(bm(c.hilt),[0,-.5,0],[.16,.55,.16],g);box(bm(c.guard),[0,-.18,0],[.75,.14,.24],g);
+ box(bm(c.blade),[0,.8,0],[.28,1.7,.1],g);box(bm(c.core),[0,.8,.06],[.1,1.5,.04],g);
+ rot(box(bm(c.blade),[0,1.72,0],[.28,.28,.1],g),Math.PI/4);
+ g.scale.setScalar(1.3);dropItem.add(g);return g;
+}
+const DROP_NODE={
+ flame:mkDropSword({hilt:'#4a1410',guard:'#8a1c0c',blade:'#ff4d1a',core:'#fff3a0'}),
+ frost:mkDropSword({hilt:'#27406a',guard:'#9ad8ff',blade:'#bfefff',core:'#ffffff'}),
+ coin:(()=>{const g=new THREE.Group(),cg=new THREE.CylinderGeometry(.5,.5,.1,18);
+  [[0,0,6],[.95,.35,4],[-.85,.5,5]].forEach(([x,z,n])=>{for(let i=0;i<n;i++){const m=new THREE.Mesh(cg,bm(i%2?'#ffd23f':'#ffb81c'));m.position.set(x,i*.12-.3,z);g.add(m)}});
+  dropItem.add(g);return g})()
+};
+const DROP_COL={flame:['#ff7a2f',FIRE_C],frost:['#7ad7ff',ICE_C],coin:['#ffd23f',['#ffd23f','#ffb81c','#fff3a0','#ffe27a']]};
+function resetDrop(){G.drop=null;G.winIn=null;G.reward=null}
+function spawnDrop(P,wid){
+ const coin=SAVE.owned.includes(wid),kind=coin?'coin':wid;
+ let x=0,z=0;
+ for(let i=0;i<24;i++){const a=Math.random()*6.283,r=4+Math.random()*11;x=Math.cos(a)*r;z=Math.sin(a)*r;if(Math.hypot(x-P.x,z-P.z)>=8)break}
+ G.drop={x,z,wid,coin,kind,t:0};
+ for(const k in DROP_NODE)DROP_NODE[k].visible=k===kind;
+ dropBeam.material.color.set(DROP_COL[kind][0]);dropRing.material.color.set(DROP_COL[kind][0]);
+ toast('Wave '+(G.room+1)+' selesai! Ambil '+(coin?'koin':WEAPONS[wid].name)+' yang bersinar!');
+ AU.play('clear');
+}
+function dropTick(dt,P){
+ const D=G.drop;D.t+=dt;
+ if(D.t>.5&&Math.hypot(P.x-D.x,P.z-D.z)<2.4)takeDrop();
+}
+function takeDrop(){
+ const D=G.drop,nm=WEAPONS[D.wid].name,col=DROP_COL[D.kind];
+ G.drop=null;
+ if(D.coin){SAVE.coins+=REWARD_COIN;G.reward={coin:REWARD_COIN,name:nm};pushText(D.x,2.8,D.z,'+'+REWARD_COIN+' 🪙','#ffd23f');toast(nm+' sudah kamu miliki — diganti +'+REWARD_COIN+' koin!')}
+ else{if(!SAVE.owned.includes(D.wid))SAVE.owned.push(D.wid);G.reward={wid:D.wid};pushText(D.x,2.8,D.z,nm,'#ffffff');toast(nm+' didapat! Pakai lewat Toko Pedang.')}
+ save();AU.play('buy');AU.play('big');
+ pushFx(D.x,D.z,7,col[0]);burst(D.x,1.6,D.z,50,col[1],8,6,.28,.8,6);
+ G.winIn=1.4;
+}
+function dropAnim(t){
+ const D=G.drop;
+ if(!D){if(dropG.visible)dropG.visible=false;return}
+ dropG.visible=true;dropG.position.set(D.x,0,D.z);
+ dropItem.position.y=(D.coin?1.1:2.1)+Math.sin(t*2.6)*.22;dropItem.rotation.y=t*2.2;
+ dropBeam.material.opacity=.17+Math.sin(t*5)*.05;
+ const pr=1+Math.sin(t*4)*.08;dropRing.scale.set(3*pr,.06,3*pr);
+ if(Math.random()<.45)emitP(D.x+(Math.random()-.5)*1.8,.2,D.z+(Math.random()-.5)*1.8,0,1.6+Math.random()*2.2,0,.9,.14,DROP_COL[D.kind][0],0);
+}
 // Greatblade: bilah emas lebar & tebal, pelindung besar bermata merah
 const wGreat=wg(pl.rig.armR);
 box(mat('#3a2418'),[0,0,0],[.16,.52,.17],wGreat);box(mat('#8a5a12'),[0,.28,0],[1,.15,.26],wGreat);
@@ -1532,7 +1591,7 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
   sw.userData.aura.visible=isDual||fused;swL.userData.aura.visible=isDual;
   sw.userData.glow.intensity=(isDual||fused)?(fused?2.6:1.8):0;swL.userData.glow.intensity=isDual?1.8:0;
  pl.g.visible=cam.dist>1.85&&!(P.inv>0&&P.dashT<=0&&Math.floor(t*20)%2===0);
- weaponFx(t,P,rdt);
+ weaponFx(t,P,rdt);dropAnim(t);
  zs.forEach((o,i)=>{
   const z=G.zombies[i];if(!z.active){o.g.visible=false;o.wasF=false;return}
   const d=ZDEF[z.type];o.g.visible=true;o.crown.visible=z.type==='boss';if(z.type==='boss'&&o.crown.material)o.crown.material.color.set(BOSSES[z.bi||0].crown);
@@ -1602,7 +1661,7 @@ function enterLobby(){
  G.cut=null;$('cut').classList.remove('on');$('cutFade').classList.remove('fade');pl.g.visible=true;pl.g.rotation.x=0;setWorld('city');
  G.P=mkP();G.P.x=LX;G.P.z=8;G.P.ry=Math.PI;
  G.zombies.forEach(z=>{z.active=false});G.texts.forEach(t=>{t.active=false});G.fx.forEach(f=>{f.active=false});G.slashes.forEach(q=>{q.active=false});
- G.cleared=false;G.camSnap=true;lobbyPT=0;closePanels();G.joy.x=G.joy.z=0;G.attackHeld=false;setPhase('lobby');
+ G.cleared=false;resetDrop();G.camSnap=true;lobbyPT=0;closePanels();G.joy.x=G.joy.z=0;G.attackHeld=false;setPhase('lobby');
 }
 function lobbyUpdate(){} // lobi sekarang menu 2D, tidak ada dunia 3D lagi
 function doAct(){if(G.phase!=='lobby'||lobbyBusy)return;if(lobbyAct==='shop')openShop();else if(lobbyAct==='ability')openAbility();else if(lobbyAct==='board'||lobbyAct==='portal')openMission()}
@@ -1622,6 +1681,7 @@ function renderShop(){
  $('coinN').textContent=SAVE.coins;const L=$('shopList');L.innerHTML='';
  Object.keys(WEAPONS).forEach(id=>{
   const w=WEAPONS[id],own=SAVE.owned.includes(id),eq=selectedWeapon===id,d=document.createElement('div');d.className='wcard';
+  if(Object.values(LEVEL_REWARD).includes(id)&&!own)return; // pedang hadiah level: tidak dijual, baru muncul di sini (untuk dipakai) setelah didapat
   d.innerHTML=`<div class="wb" style="--c:${w.color}"></div><div><b>${w.name}</b><small>Damage ${w.damage}\u00d7 \u00b7 Jangkauan ${w.range}\u00d7 \u00b7 Kecepatan ${(1/w.speed).toFixed(2)}\u00d7</small><small class="su">\u26a1 Super: ${SUPERS[id].name} \u2014 ${SUPERS[id].desc}</small>${PASSIVE[id]?'<small class="su">\ud83d\udd25 Pasif: '+PASSIVE[id]+'</small>':''}</div>`;
   const b=document.createElement('button');b.className='sm';
   if(eq){b.textContent='Dipakai';b.disabled=true}
@@ -1663,7 +1723,7 @@ function renderMission(){
  seg('diffSeg',Object.keys(DIFF).map(k=>[k,DIFF[k].name]),CFG.diff,v=>{CFG.diff=v});
  const D=DIFF[CFG.diff];
  const LV=CFG.mode==='level'?CFG.level-1:0;
- $('missionSum').textContent=(CFG.mode==='level'?'Level '+CFG.level+': selesaikan '+LEVEL_WAVES[CFG.level-1]+' wave (bos tiap 5 wave, tiap level bosnya berbeda). Level dikerjakan berurutan \u2014 menang untuk membuka level berikutnya. Makin tinggi level, zombie makin kuat (HP \u00d7'+(1+LV*.3).toFixed(2)+', damage \u00d7'+(1+LV*.12).toFixed(2)+', kecepatan naik, dan jenis zombie kuat muncul lebih awal).':'Infinity: bertahan sebanyak mungkin wave tanpa batas.')+' Kesulitan '+D.name+': zombie '+D.hp+'\u00d7 HP, '+D.dm+'\u00d7 damage, hadiah koin '+D.coin+'\u00d7, bar super terisi '+Math.round(D.sup*100)+'% dari kecepatan dasar. Rekor wave: '+(SAVE.best||0)+'.';
+ $('missionSum').textContent=(CFG.mode==='level'?'Level '+CFG.level+': selesaikan '+LEVEL_WAVES[CFG.level-1]+' wave (bos tiap 5 wave, tiap level bosnya berbeda). Level dikerjakan berurutan \u2014 menang untuk membuka level berikutnya. Makin tinggi level, zombie makin kuat (HP \u00d7'+(1+LV*.3).toFixed(2)+', damage \u00d7'+(1+LV*.12).toFixed(2)+', kecepatan naik, dan jenis zombie kuat muncul lebih awal).':'Infinity: bertahan sebanyak mungkin wave tanpa batas.')+' Kesulitan '+D.name+': zombie '+D.hp+'\u00d7 HP, '+D.dm+'\u00d7 damage, hadiah koin '+D.coin+'\u00d7, bar super terisi '+Math.round(D.sup*100)+'% dari kecepatan dasar. Rekor wave: '+(SAVE.best||0)+'.'+(CFG.mode==='level'&&LEVEL_REWARD[CFG.level]?' Hadiah level ini: '+WEAPONS[LEVEL_REWARD[CFG.level]].name+' (drop setelah wave terakhir; kalau sudah punya, diganti '+REWARD_COIN+' koin).':'');
 }
 function setPhase(p){
  G.phase=p;
@@ -1678,7 +1738,7 @@ function setPhase(p){
   const gain=CFG.mode==='infinity'?(G.runCoins||0):Math.round(((G.room+1)*12+G.kills*2)*DIFF[CFG.diff].coin*(p==='win'?1.5:1)*(1+(CFG.level-1)*.25));if(CFG.mode!=='infinity')SAVE.coins+=gain;SAVE.best=Math.max(SAVE.best||0,G.room+1);let unlockMsg='';if(p==='win'&&CFG.mode==='level'&&CFG.level>(SAVE.lvlDone||0)){SAVE.lvlDone=CFG.level;unlockMsg=CFG.level<LEVEL_WAVES.length?'Level '+(CFG.level+1)+' terbuka!':'Semua level selesai!'}save();
   $('et').textContent=p==='win'?(CFG.mode==='level'?'Level '+CFG.level+' Selesai!':'Kota Selamat!'):'Kamu Kalah';
   const s=Math.floor(G.time%60).toString().padStart(2,'0');
-  $('er').innerHTML=`<li>Karakter: <b>${currentCharacter().name}</b></li><li>Senjata: <b>${currentWeapon().name}</b></li><li>Ability: <b>${SPECIALS[G.special].name}</b></li><li>Wave dicapai: <b>${G.room+1}</b></li><li>Mode: <b>${CFG.mode==='level'?'Level '+CFG.level:'Infinity'} · ${DIFF[CFG.diff].name}</b></li><li>Koin didapat: <b>+${gain}</b></li><li>Zombie dikalahkan: <b>${G.kills}</b></li><li>Waktu: <b>${Math.floor(G.time/60)}:${s}</b></li><li>Peningkatan: <b>${G.ups.length?G.ups.join(', '):'—'}</b></li>${unlockMsg?'<li>Terbuka: <b>'+unlockMsg+'</b></li>':''}`;
+  $('er').innerHTML=`<li>Karakter: <b>${currentCharacter().name}</b></li><li>Senjata: <b>${currentWeapon().name}</b></li><li>Ability: <b>${SPECIALS[G.special].name}</b></li><li>Wave dicapai: <b>${G.room+1}</b></li><li>Mode: <b>${CFG.mode==='level'?'Level '+CFG.level:'Infinity'} · ${DIFF[CFG.diff].name}</b></li><li>Koin didapat: <b>+${gain}</b></li>${p==='win'&&G.reward?'<li>Hadiah: <b>'+(G.reward.coin?G.reward.name+' sudah dimiliki → +'+G.reward.coin+' koin':WEAPONS[G.reward.wid].name+' didapat! (pakai di Toko Pedang)')+'</b></li>':''}<li>Zombie dikalahkan: <b>${G.kills}</b></li><li>Waktu: <b>${Math.floor(G.time/60)}:${s}</b></li><li>Peningkatan: <b>${G.ups.length?G.ups.join(', '):'—'}</b></li>${unlockMsg?'<li>Terbuka: <b>'+unlockMsg+'</b></li>':''}`;
  }
 }
 const touch=true; // UI mobile (joystick + tombol) selalu tampil di arena, juga di desktop
@@ -1727,7 +1787,7 @@ function hud(){
  $('hp').firstChild.style.width=P.hp/P.maxHp*100+'%';$('hp').lastChild.textContent=`HP ${Math.ceil(P.hp)}/${P.maxHp}`;
  const fzd=P.fuse>0;$('sp').firstChild.style.width=(fzd?P.fuse/30*100:P.sup)+'%';$('sp').lastChild.textContent=fzd?'PEDANG ASSASSIN '+Math.ceil(P.fuse)+'s':full?SUPERS[selectedWeapon].name.toUpperCase()+' SIAP! (E)':'SUPER';$('loadoutHud').textContent=currentCharacter().name+' \u00b7 '+currentWeapon().name+' \u00b7 '+SPECIALS[G.special].name+(CFG.mode==='infinity'?' \u00b7 \ud83e\ude99 +'+(G.runCoins||0):'');$('bU').textContent=SUPERS[selectedWeapon].name;$('bU').style.fontSize='10px';$('sp').classList.toggle('full',full&&!fzd);$('sp').classList.toggle('fused',fzd);
  $('rm').textContent='Wave '+(G.room+1)+(CFG.mode==='level'?'/'+LEVEL_WAVES[CFG.level-1]:'')+((G.room+1)%5===0?' \u2014 BOS: '+BOSSES[bossIndex(G.room+1)].name:'');
- const bz=G.zombies.find(z=>z.active&&!z.dead&&z.type==='boss'),bb=$('bb');bb.style.display=bz?'block':'none';if(bz)bb.firstChild.style.width=Math.max(0,bz.hp/bz.maxHp*100)+'%';$('rs').textContent=G.cleared?'Wave berikutnya: '+Math.ceil(G.waveBreak)+' detik':'Kalahkan semua zombie!';
+ const bz=G.zombies.find(z=>z.active&&!z.dead&&z.type==='boss'),bb=$('bb');bb.style.display=bz?'block':'none';if(bz)bb.firstChild.style.width=Math.max(0,bz.hp/bz.maxHp*100)+'%';$('rs').textContent=G.drop?'Ambil hadiah yang bersinar di arena!':G.winIn!=null?'Hadiah didapat!':G.cleared?'Wave berikutnya: '+Math.ceil(G.waveBreak)+' detik':'Kalahkan semua zombie!';
  const tt=$('toast');tt.style.display=G.toast.t>0?'block':'none';tt.textContent=G.toast.text;
  const SPd=SPECIALS[G.special],sF=Math.max(0,Math.min(1,P.spCd/(SPd.cd*P.cd)));$('cdS').childNodes[1].textContent=SPd.name;$('bS').textContent=SPd.name;$('bS').style.fontSize='11px';
  const set=(id,f,txt)=>{const e=$(id);e.querySelector('u').style.height=f*100+'%';e.querySelector('em').textContent=txt||''};
