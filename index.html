@@ -704,8 +704,10 @@ const WHITE=new THREE.Color('#fff'),ICE=new THREE.Color('#bfe9ff'),FIRE=new THRE
 const pm={skin:mat('#ffd2a8'),shirt:mat('#3fa7ff'),pants:mat('#2b4cff'),eyes:mat('#222')};
 const pl=blocky(pm,mat('#ff4d6d'));scene.add(pl.g);
 // pedang (dari box) di tangan kanan
+// HOLD: bilah dibalik (PI) supaya ujung tajam menunjuk ke bawah (agak ke depan), bukan menyamping ke depan.
+const HOLD=Math.PI;
 const makeBlade=(parent,color)=>{
- const blade=new THREE.Group();blade.position.set(0,-.62,.05);blade.rotation.x=Math.PI/2;parent.add(blade);
+ const blade=new THREE.Group();blade.position.set(0,-.62,.05);blade.rotation.x=HOLD;parent.add(blade);
  const grip=mat('#392b35'),gold=mat('#e8c65a');
  box(grip,[0,0,0],[.13,.42,.14],blade);
  box(gold,[0,.22,0],[.58,.11,.19],blade);
@@ -1405,7 +1407,7 @@ function awkAuraFx(t,P){
  awkCol.material.color.set(a.col);awkCol.material.opacity=.22+.1*Math.sin(t*18);awkCol2.material.opacity=.5;
 }
 // ===== model 3D unik untuk tiap pedang =====
-const wg=(arm)=>{const g=new THREE.Group();g.position.set(0,-.62,.05);g.rotation.x=Math.PI/2;g.visible=false;arm.add(g);return g};
+const wg=(arm)=>{const g=new THREE.Group();g.position.set(0,-.62,.05);g.rotation.x=HOLD;g.visible=false;arm.add(g);return g};
 const rot=(m,z)=>{m.rotation.z=z;return m};
 // ===== Drop hadiah fisik: Lv 5 = Flame Sword, Lv 7 = Frost Blade (mode Level, muncul setelah wave terakhir) =====
 const dropG=new THREE.Group();dropG.visible=false;scene.add(dropG);
@@ -1562,7 +1564,7 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
  const runWave=P.moving?Math.sin(t*15)*.95:Math.sin(t*2)*.035;
  const w=P.dashT>0?1.15:runWave;
  pl.rig.legL.rotation.x=w;pl.rig.legR.rotation.x=-w;
- let aL=-w*.72,aR=-.72-w*.18,spin=0;const fused=selectedWeapon==='dual'&&P.fuse>0,dualOn=selectedWeapon==='dual'&&!fused;
+ let aL=-w*.72,aR=-.72-w*.18,spin=0;const fused=selectedWeapon==='dual'&&P.fuse>0,dualOn=selectedWeapon==='dual'&&!fused;if(dualOn&&P.dashT<=0)aL=-.72-w*.18;/* dual: tangan kiri ikut terangkat agar bilah kiri tidak menembus lengan */
  if(P.dashT>0){aL=1.9;aR=2.05}
  if(P.swing>0){
   const p=Math.min(1,Math.max(0,1-P.swing/.25)),e=p*p*(3-2*p);
@@ -1586,8 +1588,8 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
   sw.children[2].material.color.set(fused?'#f0d6ff':selectedWeapon==='dual'?'#c084fc':currentWeapon().color);
   swL.children[2].material.color.set('#c084fc');
   const isDual=dualOn;
-  sw.rotation.x=isDual?-Math.PI/2:Math.PI/2;
-  swL.rotation.x=-Math.PI/2;
+  sw.rotation.x=HOLD;
+  swL.rotation.x=HOLD;
   sw.userData.aura.visible=isDual||fused;swL.userData.aura.visible=isDual;
   sw.userData.glow.intensity=(isDual||fused)?(fused?2.6:1.8):0;swL.userData.glow.intensity=isDual?1.8:0;
  pl.g.visible=cam.dist>1.85&&!(P.inv>0&&P.dashT<=0&&Math.floor(t*20)%2===0);
