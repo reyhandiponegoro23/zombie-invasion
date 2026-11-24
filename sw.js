@@ -1,6 +1,6 @@
 // Service worker: cache aplikasi + Three.js supaya bisa dimainkan offline setelah dibuka sekali.
 // v3: halaman (index.html) kini network-first, jadi update game langsung terlihat; cache hanya dipakai saat offline.
-const CACHE = 'zombie-invasion-v3';
+const CACHE = 'zombie-invasion-v4';
 const THREE = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
 const LOCAL = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 self.addEventListener('install', e => {
