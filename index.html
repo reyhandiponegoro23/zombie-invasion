@@ -475,7 +475,7 @@ const SPECIALS=[
 ];
 // ===== Super: setiap pedang punya kekuatan super berbeda =====
 const pushBeam=(x,z,ry,len,w,color)=>{const b=G.beams.find(q=>!q.active)||G.beams[0];Object.assign(b,{active:true,x,z,ry,len,w,color,t:0})};
-const supM=()=>currentWeapon().special;
+const supM=()=>(NET.atk&&WEAPONS[NET.atk.wp]||currentWeapon()).special;
 const nearestZ=(P,r)=>{let b=null,bd=r;for(const z of alive()){const d=Math.hypot(z.x-P.x,z.z-P.z);if(d<bd){bd=d;b=z}}return b};
 const SUPERS={
  sword:{name:'Ledakan Pahlawan',desc:'Gelombang tebasan raksasa menghantam SEMUA zombie di arena.',run(P){const m=P.dm*supM();P.inv=1;pushFx(P.x,P.z,11,'#ffe14d');pushSlash(P.x,P.z,P.ry,3,3.5);G.shake=1;P.swing=.4;P.combo=3;for(const z of alive())hitZombie(z,70*m,14,P.x,P.z,1,2)}},
@@ -510,7 +510,7 @@ function weaponProc(z,P){
 }
 function offerUpgrades(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.random()-.5).slice(0,3);$('upg').querySelector('h1').textContent=boss?'Bos kalah! Pilih peningkatan':'Wave selesai! Pilih peningkatan';setPhase('upgrade');renderUpg()}
 function pick(i){const u=choices[i];u[2](G.P);G.ups.push(u[0]);bossPick=false;toast('Dipilih: '+u[0]);setPhase('play')}
-const NET={role:'off',peer:null,conn:null,players:new Map(),roster:[],others:new Map(),code:'',myId:'',slot:0,snapT:0,stT:0,starting:false,avatars:new Map(),hudT:0,status:''};
+const NET={suWait:0,atk:null,vis:false,vp:[],role:'off',peer:null,conn:null,players:new Map(),roster:[],others:new Map(),code:'',myId:'',slot:0,snapT:0,stT:0,starting:false,avatars:new Map(),hudT:0,status:''};
 const toast=t=>{G.toast.text=t;G.toast.t=2.4;if(NET.role==='host')netBc({t:'toast',m:t})};
 // Infinity: tiap zombie yang dikalahkan langsung memberi 50 koin
 const INF_COIN=50;
@@ -573,7 +573,8 @@ function startRun(){
 function togglePause(){if(G.phase==='play')setPhase('pause');else if(G.phase==='pause')setPhase('play')}
 const alive=()=>G.zombies.filter(z=>z.active&&!z.dead);
 function hitZombie(z,dmg,kb,sx,sz,stun,quiet){
- const P=G.P,dx=z.x-sx,dz=z.z-sz,l=Math.hypot(dx,dz)||1,k=kb*(1-ZDEF[z.type].kbRes);
+ if(NET.vis)return;
+ const P=NET.atk||G.P,dx=z.x-sx,dz=z.z-sz,l=Math.hypot(dx,dz)||1,k=kb*(1-ZDEF[z.type].kbRes);
  z.vx+=dx/l*k;z.vz+=dz/l*k;z.hp-=dmg;if(quiet!==1){z.flash=1;z.stun=z.type==='boss'?0:stun;if(z.type!=='boss')z.wind=0}
  pushText(z.x,2.2*ZDEF[z.type].scale,z.z,String(Math.round(dmg)),dmg>=20?'#ffd23f':'#ffffff');
  if(!quiet&&!(P.fuse>0))P.sup=Math.min(100,P.sup+SUP_HIT*P.sg*DIFF[CFG.diff].sup);P.hp=Math.min(P.maxHp,P.hp+dmg*P.ls);
@@ -628,9 +629,9 @@ function update(dtRaw){
    if(!G.spHeld){P.aiming=false;const [tx,tz]=aimTarget(P);P.ry=Math.atan2(P.aimX,P.aimZ);P.spCd=SP.cd*P.cd;P.jump={t:0,dur:.5,sx:P.x,sz:P.z,tx,tz};P.swing=.3;P.combo=3}
   }
  }else if(G.req.special&&P.spCd<=0){
-  P.spCd=SP.cd*P.cd;P.swing=.3;P.combo=3;SP.run(P);
+  P.spCd=SP.cd*P.cd;P.swing=.3;P.combo=3;SP.run(P);if(NET.role==='host')netBc({t:'fx',k:'sp',id:SP.id,w:'host',x:P.x,z:P.z,ry:P.ry});
  }
- if(P.jump){const J=P.jump;J.t+=dt;const u=Math.min(1,J.t/J.dur);P.x=J.sx+(J.tx-J.sx)*u;P.z=J.sz+(J.tz-J.sz)*u;P.y=Math.sin(Math.PI*u)*3.6;P.inv=Math.max(P.inv,.2);mx=mz=0;P.moving=false;if(u>=1){P.jump=null;P.y=0;groundSlam(P)}}
+ if(P.jump){const J=P.jump;J.t+=dt;const u=Math.min(1,J.t/J.dur);P.x=J.sx+(J.tx-J.sx)*u;P.z=J.sz+(J.tz-J.sz)*u;P.y=Math.sin(Math.PI*u)*3.6;P.inv=Math.max(P.inv,.2);mx=mz=0;P.moving=false;if(u>=1){P.jump=null;P.y=0;groundSlam(P);if(NET.role==='host')netBc({t:'fx',k:'sp',id:'slam',w:'host',x:P.x,z:P.z,ry:P.ry})}}
  if(P.pulses>0){P.pulseT-=dt;if(P.pulseT<=0){P.pulseT=.28;P.pulses--;pushFx(P.x,P.z,4.2,'#8dffda');pushSlash(P.x,P.z,P.ry+P.pulses*1.7,3,1.4);P.swing=.3;P.combo=3;G.shake=Math.max(G.shake,.3);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<4.2+ZDEF[z.type].scale*.4)hitZombie(z,14*P.dm*P.sd,5,P.x,P.z,.35)}}
  if(P.sPulses>0){P.sPulseT-=dt;P.inv=Math.max(P.inv,.2);if(P.sPulseT<=0){P.sPulseT=.17;P.sPulses--;pushFx(P.x,P.z,5.8,'#c084fc');pushSlash(P.x,P.z,P.ry+P.sPulses*2.1,3,1.9);P.swing=.3;P.combo=3;G.shake=Math.max(G.shake,.35);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<5.8+ZDEF[z.type].scale*.4)hitZombie(z,22*P.sM,4,P.x,P.z,.3,2)}}
  if(G.req.super&&P.sup>=100&&!P.jump&&!G.awk)startAwaken(P);
@@ -1725,6 +1726,7 @@ function closePanels(){lobbyBusy=false;syncLock(true);$('shopP').style.display='
 // ===== CO-OP ONLINE (beta) — PeerJS, host-authoritative: host menjalankan zombie & bos, tamu mengirim posisi + serangan =====
 const NET_COLS=['#3fa7ff','#ff6b6b','#ffd23f','#6bff9a'],NET_CH='ABCDEFGHJKMNPQRSTUVWXYZ23456789',ZT=Object.keys(ZDEF);
 const netSend=(c,o)=>{try{if(c&&c.open)c.send(o)}catch(e){}};
+function netBc0(){}
 function netBc(o){if(NET.role!=='host')return;for(const p of NET.players.values())netSend(p.conn,o)}
 function netName(){let n='';try{n=($('netName').value||'').trim()}catch(e){}return(n||'Pemain').slice(0,12)}
 function netLoadLib(ok,fail){if(window.Peer)return ok();const sc=document.createElement('script');sc.src='https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js';sc.onload=()=>window.Peer?ok():fail();sc.onerror=fail;document.head.appendChild(sc)}
@@ -1744,11 +1746,13 @@ function netHostMsg(c,m){
  if(m.t==='hello'){
   if(NET.players.size>=3||G.phase==='play'){netSend(c,{t:'full'});setTimeout(()=>{try{c.close()}catch(e){}},300);return}
   const used=new Set([...NET.players.values()].map(q=>q.slot));let slot=1;while(used.has(slot))slot++;
-  NET.players.set(c.peer,{id:c.peer,conn:c,name:String(m.name||'Pemain').slice(0,12),slot,remote:true,x:slot*2-3,z:6.5,ry:Math.PI,hp:100,maxHp:clampN(+m.mh||100,50,2000),alive:true,inv:0,mv:0,sw:0,cb:1,wp:'sword',lastAtk:-9});
+  NET.players.set(c.peer,{id:c.peer,conn:c,name:String(m.name||'Pemain').slice(0,12),slot,remote:true,x:slot*2-3,z:6.5,ry:Math.PI,hp:100,maxHp:clampN(+m.mh||100,50,2000),alive:true,inv:0,mv:0,sw:0,cb:1,wp:'sword',lastAtk:-9,lastSp:-99,sup:0,sg:1,ls:0,fuse:0,dm:1,sd:1,sM:1,rg:1,y:0,swing:0,combo:1,suT:0,suWp:'sword'});
   netRoster();return}
  const p=NET.players.get(c.peer);if(!p)return;
  if(m.t==='st'){p.x=clampN(+m.x||0,-HALF+1,HALF-1);p.z=clampN(+m.z||0,-HALF+1,HALF-1);p.ry=+m.ry||0;p.mv=m.mv?1:0;p.sw=m.sw?1:0;p.cb=m.cb|0;p.wp=WEAPONS[m.wp]?m.wp:'sword';if(m.mh)p.maxHp=clampN(+m.mh,50,2000)}
- else if(m.t==='atk')netRemoteAttack(p,m)}
+ else if(m.t==='atk')netRemoteAttack(p,m);
+ else if(m.t==='sp')netRemoteSpecial(p,m);
+ else if(m.t==='su')netRemoteSuper(p,m)}
 function netDrop(c){
  const p=NET.players.get(c.peer);if(!p)return;NET.players.delete(c.peer);
  if(G.phase==='play'){toast(p.name+' keluar dari room');netCheckOver()}
@@ -1756,10 +1760,10 @@ function netDrop(c){
 function netRemoteAttack(p,m){
  if(G.phase!=='play'||!p.alive||G.time-p.lastAtk<.12)return;p.lastAtk=G.time;
  const c=clampN(m.c|0,1,3),ry=+m.ry||0,fx=Math.sin(ry),fz=Math.cos(ry),dm=clampN(+m.dm||1,.1,40),rg=clampN(+m.rg||1,.5,3);let hit=0;
- p.ry=ry;p.sw=1;p.cb=c;
+ p.ry=ry;p.sw=1;p.cb=c;NET.atk=p;
  for(const z of alive()){const dx=z.x-p.x,dz=z.z-p.z,d=Math.hypot(dx,dz);
   if(d<2.9*rg+ZDEF[z.type].scale*.4&&(c===3||d<.1||(dx*fx+dz*fz)/d>.1)){hitZombie(z,(c===3?26:12)*dm,c===3?8:2.5,p.x,p.z,c===3?.55:.25);hit++}}
- if(hit)G.shake=Math.max(G.shake,.1)}
+ NET.atk=null;if(hit)G.shake=Math.max(G.shake,.1)}
 function hurtRemote(p,dmg,fx,fz){
  if(p.inv>0||!p.alive)return;p.hp-=dmg;p.inv=.7;if(p.hp<=0){p.hp=0;p.alive=false}
  netSend(p.conn,{t:'hurt',hp:p.hp,dmg:Math.round(dmg),fx,fz,dead:!p.alive});
@@ -1769,13 +1773,50 @@ function netWaveClear(wv){
  for(const p of NET.players.values()){
   if(!p.alive){p.alive=true;p.hp=p.maxHp*.4;netSend(p.conn,{t:'rev',hp:p.hp})}
   else p.hp=Math.min(p.maxHp,p.hp+(wv%5===0?p.maxHp*.4:15))}}
+function netRemoteSpecial(p,m){
+ if(G.phase!=='play'||!p.alive||p.suT>0||G.time-p.lastSp<2.5)return;
+ const SP=SPECIALS.find(q=>q.id===m.id);if(!SP)return;p.lastSp=G.time;
+ p.dm=clampN(+m.dm||1,.1,20);p.sd=clampN(+m.sd||1,.1,20);p.sM=p.sd;
+ if(SP.id==='slam'){p.x=clampN(+m.x||p.x,-HALF+1,HALF-1);p.z=clampN(+m.z||p.z,-HALF+1,HALF-1)}
+ NET.atk=p;try{SP.run(p)}catch(e){}NET.atk=null;p.swing=.3;p.sw=1;
+ netBc({t:'fx',k:'sp',id:SP.id,w:p.id,x:p.x,z:p.z,ry:p.ry})}
+function netRemoteSuper(p,m){
+ if(G.phase!=='play'||!p.alive||p.sup<100||p.suT>0||!SUPERS[m.wp])return;
+ p.sup=0;p.suT=AWK_DUR;p.suWp=m.wp;p.wp=m.wp;p.dm=clampN(+m.dm||1,.1,20);p.inv=AWK_DUR+1.5;pushFx(p.x,p.z,3.2,'#ffffff')}
+function netSuperRun(p){
+ const wp=p.suWp;NET.atk=p;
+ try{
+  if(wp==='flame'||wp==='frost'){
+   const m=p.dm*supM();p.inv=Math.max(p.inv,1.6);pushFx(p.x,p.z,13,wp==='flame'?'#ff7a2f':'#7ad7ff');screenFlash();G.shake=Math.max(G.shake,1.2);
+   for(const z of alive()){if(wp==='flame'){hitZombie(z,45*m,2,p.x,p.z,.5,2);if(!z.dead){z.burn=5;z.burnT=.25;z.burnM=m}}else{hitZombie(z,55*m,2,p.x,p.z,0,2);if(!z.dead){z.freeze=z.type==='boss'?2.2:4.5;z.wind=0;z.stun=0}}}
+  }else SUPERS[wp].run(p)
+ }catch(e){}
+ NET.atk=null;p.sw=1;
+ netBc({t:'fx',k:'su',wp,w:p.id,x:p.x,z:p.z,ry:p.ry})}
+function netRemoteTick(p,dt){
+ p.sup=Math.min(100,p.sup);
+ if(p.suT>0){p.suT-=dt;if(p.suT<=0)netSuperRun(p)}
+ if(p.pulses>0){p.pulseT-=dt;if(p.pulseT<=0){p.pulseT=.28;p.pulses--;NET.atk=p;pushFx(p.x,p.z,4.2,'#8dffda');pushSlash(p.x,p.z,p.ry+p.pulses*1.7,3,1.4);for(const z of alive())if(Math.hypot(z.x-p.x,z.z-p.z)<4.2+ZDEF[z.type].scale*.4)hitZombie(z,14*p.dm*p.sd,5,p.x,p.z,.35);NET.atk=null}}
+ if(p.sPulses>0){p.sPulseT-=dt;if(p.sPulseT<=0){p.sPulseT=.17;p.sPulses--}}}
+// efek visual skill/super dari pemain lain (tanpa damage; damage dihitung host)
+function netGuestFx(m){
+ const q={x:+m.x||0,z:+m.z||0,ry:+m.ry||0,dm:1,sd:1,sM:1,hp:100,maxHp:100,inv:0,pulses:0,pulseT:0,sPulses:0,swing:0,combo:1,fuse:0,sup:0,y:0,wp:m.wp||'sword'};
+ NET.vis=true;
+ try{
+  if(m.k==='sp'){const SP=SPECIALS.find(x=>x.id===m.id);if(SP){SP.run(q);if(q.pulses>0)NET.vp.push(q)}}
+  else if(m.k==='su'){
+   const col=(WEAPONS[q.wp]&&WEAPONS[q.wp].color)||'#c084fc';
+   pushFx(q.x,q.z,13,col);pushFx(q.x,q.z,8,'#ffffff');G.shake=Math.max(G.shake,1.4);screenFlash();
+   if(q.wp!=='flame'&&q.wp!=='frost'&&SUPERS[q.wp])SUPERS[q.wp].run(q)}
+ }catch(e){}
+ NET.vis=false}
 function netSnap(){
  const zs=[];G.zombies.forEach((z,i)=>{if(!z.active)return;zs.push([i,ZT.indexOf(z.type),+z.x.toFixed(2),+z.z.toFixed(2),Math.round(z.hp),Math.round(z.maxHp),(z.dead?1:0)|(z.freeze>0?2:0)|(z.burn>0?4:0)|(z.stun>0?8:0),z.bi||0,z.wind>0?1:0,+(z.flash||0).toFixed(1)])});
- const P=G.P,ps=[['host',+P.x.toFixed(2),+P.z.toFixed(2),+P.ry.toFixed(2),P.moving?1:0,P.swing>0?1:0,P.combo|0,Math.round(P.hp),P.maxHp,P.down?0:1,selectedWeapon]];
- for(const p of NET.players.values())ps.push([p.id,+p.x.toFixed(2),+p.z.toFixed(2),+p.ry.toFixed(2),p.mv,p.sw,p.cb,Math.round(p.hp),p.maxHp,p.alive?1:0,p.wp]);
+ const P=G.P,ps=[['host',+P.x.toFixed(2),+P.z.toFixed(2),+P.ry.toFixed(2),P.moving?1:0,P.swing>0?1:0,P.combo|0,Math.round(P.hp),P.maxHp,P.down?0:1,selectedWeapon,Math.round(P.sup)]];
+ for(const p of NET.players.values())ps.push([p.id,+p.x.toFixed(2),+p.z.toFixed(2),+p.ry.toFixed(2),p.mv,p.sw,p.cb,Math.round(p.hp),p.maxHp,p.alive?1:0,p.wp,Math.round(p.sup)]);
  return{t:'snap',zs,ps,room:G.room,kills:G.kills,rc:G.runCoins||0,cl:G.cleared?1:0,wb:+(G.waveBreak||0).toFixed(1),tm:+G.time.toFixed(1)}}
 function netHostTick(dt){
- for(const p of NET.players.values())p.inv-=dt;
+ for(const p of NET.players.values()){p.inv-=dt;netRemoteTick(p,dt)}
  NET.snapT-=dt;if(NET.snapT>0)return;NET.snapT=1/12;netBc(netSnap())}
 function netApplySnap(m){
  G.room=m.room;G.kills=m.kills;G.runCoins=m.rc;G.cleared=!!m.cl;G.waveBreak=m.wb;G.time=m.tm;
@@ -1789,7 +1830,7 @@ function netApplySnap(m){
  G.zombies.forEach((z,i)=>{if(z.active&&!seen.has(i))z.active=false});
  const P=G.P;
  for(const e of m.ps){
-  if(e[0]===NET.myId){P.hp=e[7];P.maxHp=e[8];P.down=!e[9];continue}
+  if(e[0]===NET.myId){P.hp=e[7];P.maxHp=e[8];P.down=!e[9];if(e[11]!=null&&!(G.net&&NET.suWait>0))P.sup=e[11];continue}
   const r=NET.roster.find(q=>q.id===e[0])||{name:'Pemain',slot:1};
   NET.others.set(e[0],{id:e[0],name:r.name,slot:r.slot,x:e[1],z:e[2],ry:e[3],mv:e[4],sw:e[5],cb:e[6],hp:e[7],maxHp:e[8],alive:!!e[9],wp:e[10]})}}
 function netGuestMsg(m){
@@ -1798,6 +1839,7 @@ function netGuestMsg(m){
  else if(m.t==='full'){netLeave();NET.status='Room penuh atau game sudah berjalan.';netUi()}
  else if(m.t==='start')netGuestStart(m);
  else if(m.t==='snap'){if(G.phase==='play'||G.phase==='pause')netApplySnap(m)}
+ else if(m.t==='fx')netGuestFx(m);
  else if(m.t==='toast'){G.toast.text=m.m;G.toast.t=2.4}
  else if(m.t==='hurt'){const P=G.P;P.hp=m.hp;P.hurt=.3;P.inv=.7;const dx=P.x-m.fx,dz=P.z-m.fz,l=Math.hypot(dx,dz)||1;P.kx+=dx/l*6;P.kz+=dz/l*6;G.shake=Math.max(G.shake,.45);pushText(P.x,2.6,P.z,'-'+m.dmg,'#ff4d4d');if(m.dead){P.down=true;P.hp=0}}
  else if(m.t==='rev'){const P=G.P;P.down=false;P.hp=m.hp;pushFx(P.x,P.z,5,'#6bff9a')}
@@ -1815,13 +1857,26 @@ function guestTick(dt){
  const ml=Math.hypot(mx,mz);if(ml>1){mx/=ml;mz/=ml}
  if(P.down){mx=mz=0;G.req.attack=G.req.dash=false;G.attackHeld=false}
  P.moving=ml>.15&&!P.down;const sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw),ox=mx;mx=ox*cy+mz*sy;mz=-ox*sy+mz*cy;
- if(G.req.dash&&!P.down){const l=Math.hypot(mx,mz);if(l>.15){P.dx=mx/l;P.dz=mz/l}else{P.dx=Math.sin(P.ry);P.dz=Math.cos(P.ry)}P.dashT=.18;P.dashCd=0;P.inv=Math.max(P.inv,.4)}
- if((G.attackHeld||G.req.attack)&&P.atkCd<=0&&P.dashT<=0&&!P.down){
+ if(G.req.dash&&!P.down&&!P.jump&&!P.aiming){const l=Math.hypot(mx,mz);if(l>.15){P.dx=mx/l;P.dz=mz/l}else{P.dx=Math.sin(P.ry);P.dz=Math.cos(P.ry)}P.dashT=.18;P.dashCd=0;P.inv=Math.max(P.inv,.4)}
+ if((G.attackHeld||G.req.attack)&&P.atkCd<=0&&P.dashT<=0&&!P.down&&!P.jump&&!P.aiming){
   const t=nearestZ(P,5);if(t)P.ry=Math.atan2(t.x-P.x,t.z-P.z);
   P.combo=P.comboT>0?(P.combo%3)+1:1;const c=P.combo,w=currentWeapon();
   P.comboT=.9;P.atkCd=(c===3?.55:.27)*w.speed;P.swD=.25;P.swing=.25;pushSlash(P.x,P.z,P.ry,c,1);
   P.kx+=Math.sin(P.ry)*4.5;P.kz+=Math.cos(P.ry)*4.5;
   netSend(NET.conn,{t:'atk',c,ry:+P.ry.toFixed(2),dm:+(P.dm*w.damage).toFixed(2),rg:+(P.rg*w.range).toFixed(2)})}
+ const SP=SPECIALS[G.special]||SPECIALS[0];P.spCd-=dt;NET.suWait-=dt;
+ if(SP.aim){
+  if(G.req.special&&P.spCd<=0&&!P.aiming&&!P.jump&&!P.down){P.aiming=true;P.aimX=Math.sin(P.ry);P.aimZ=Math.cos(P.ry)}
+  if(P.aiming){const l=Math.hypot(mx,mz);if(l>.2){P.aimX=mx/l;P.aimZ=mz/l}mx=mz=0;P.moving=false;
+   if(!G.spHeld){P.aiming=false;const [tx,tz]=aimTarget(P);P.ry=Math.atan2(P.aimX,P.aimZ);P.spCd=SP.cd*P.cd;P.jump={t:0,dur:.5,sx:P.x,sz:P.z,tx,tz};P.swing=.3;P.combo=3}}
+ }else if(G.req.special&&P.spCd<=0&&!P.down){P.spCd=SP.cd*P.cd;P.swing=.3;P.combo=3;netSend(NET.conn,{t:'sp',id:SP.id,dm:+P.dm.toFixed(2),sd:+P.sd.toFixed(2)})}
+ if(P.jump){const J=P.jump;J.t+=dt;const u=Math.min(1,J.t/J.dur);P.x=J.sx+(J.tx-J.sx)*u;P.z=J.sz+(J.tz-J.sz)*u;P.y=Math.sin(Math.PI*u)*3.6;P.inv=Math.max(P.inv,.2);mx=mz=0;P.moving=false;if(u>=1){P.jump=null;P.y=0;netSend(NET.conn,{t:'sp',id:'slam',dm:+P.dm.toFixed(2),sd:+P.sd.toFixed(2),x:+P.x.toFixed(2),z:+P.z.toFixed(2)})}}
+ if(G.req.super&&P.sup>=100&&!P.down&&!P.jump&&NET.suWait<=0){
+  const w=currentWeapon(),col=w.color||'#c084fc';NET.suWait=AWK_DUR+.5;P.inv=Math.max(P.inv,AWK_DUR+1);
+  netSend(NET.conn,{t:'su',wp:selectedWeapon,dm:+P.dm.toFixed(2)});
+  const ov=$('awk');ov.style.setProperty('--ac',col);$('awkName').textContent=SUPERS[selectedWeapon].name.toUpperCase();ov.classList.remove('on');void ov.offsetWidth;ov.classList.add('on');pushFx(P.x,P.z,3.2,col);G.shake=Math.max(G.shake,.4);
+  setTimeout(()=>$('awk').classList.remove('on'),AWK_DUR*1000)}
+ for(let i=NET.vp.length-1;i>=0;i--){const q=NET.vp[i];q.pulseT-=dt;if(q.pulseT<=0){q.pulseT=.28;q.pulses--;pushFx(q.x,q.z,4.2,'#8dffda');pushSlash(q.x,q.z,q.ry+q.pulses*1.7,3,1.4)}if(q.pulses<=0)NET.vp.splice(i,1)}
  G.req.attack=G.req.dash=G.req.special=G.req.super=false;
  let vx=mx*6*P.sp,vz=mz*6*P.sp;
  if(P.dashT>0){vx=P.dx*20;vz=P.dz*20;P.ry=Math.atan2(P.dx,P.dz)}else if(cam.shiftLock){P.ry=cam.yaw+Math.PI}else if(P.moving&&P.swing<=0)P.ry=Math.atan2(mx,mz);
@@ -2177,7 +2232,7 @@ function awakenTick(dt){
   const fl=$('awkFlash');fl.style.setProperty('--ac',a.col);fl.classList.remove('go');void fl.offsetWidth;fl.classList.add('go');
   P.sup=0;pushFx(P.x,P.z,13,a.col);pushFx(P.x,P.z,8,'#ffffff');
   burst(P.x,1.2,P.z,40,[a.col,'#ffffff','#ffe9a0'],9,6,.28,.9,6);
-  SUPERS[selectedWeapon].run(P);G.shake=Math.max(G.shake,1.9);
+  SUPERS[selectedWeapon].run(P);G.shake=Math.max(G.shake,1.9);if(NET.role==='host')netBc({t:'fx',k:'su',wp:selectedWeapon,w:'host',x:P.x,z:P.z,ry:P.ry});
  }
 }
 // ===== Suara & efek (semua disintesis lewat WebAudio, tanpa file audio) =====
