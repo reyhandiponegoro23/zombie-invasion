@@ -1525,12 +1525,13 @@ box(mat('#241a3a'),[0,0,0],[.15,.7,.16],wDH);[-.2,0,.2].forEach(y=>box(bm('#b04d
 wDH.userData={glows:wDH.children.filter(c=>c.material&&c.material.transparent)};wDH.userData.glows.forEach(m=>m.visible=false);
 // Dark Blade: bilah hitam bergerigi dengan cahaya ungu
 const wDark=wg(pl.rig.armR);
-box(mat('#120a1f'),[0,0,0],[.15,.5,.16],wDark);box(bm('#b04dff'),[0,.28,0],[.8,.12,.24],wDark);
-rot(box(bm('#7a2cff'),[.42,.44,0],[.1,.34,.1],wDark),-.6);rot(box(bm('#7a2cff'),[-.42,.44,0],[.1,.34,.1],wDark),.6);
+box(mat('#120a1f'),[0,0,0],[.15,.5,.16],wDark);box(bm('#ffd23f'),[0,.28,0],[.8,.12,.24],wDark);
+rot(box(bm('#e0a800'),[.42,.44,0],[.1,.34,.1],wDark),-.6);rot(box(bm('#e0a800'),[-.42,.44,0],[.1,.34,.1],wDark),.6);rot(box(bm('#ffd23f'),[.2,.46,0],[.08,.26,.1],wDark),.5);rot(box(bm('#ffd23f'),[-.2,.46,0],[.08,.26,.1],wDark),-.5);
 box(bm('#1b1030'),[0,1.15,0],[.32,1.8,.1],wDark);box(bm('#b04dff'),[.18,1.15,0],[.05,1.8,.12],wDark);box(bm('#b04dff'),[-.18,1.15,0],[.05,1.8,.12],wDark);box(bm('#e9c9ff'),[0,1.15,.06],[.06,1.65,.03],wDark);
 [[.2,.8],[-.2,1.15],[.2,1.5],[-.2,1.85]].forEach(([x,y])=>rot(box(bm('#7a2cff'),[x,y,0],[.12,.2,.1],wDark),x>0?-.7:.7));
 rot(box(bm('#b04dff'),[0,2.12,0],[.32,.32,.1],wDark),Math.PI/4);
 const dkA=new THREE.Mesh(BOX,addM('#9b4dff',.35));dkA.position.set(0,1.2,0);dkA.scale.set(.6,2.1,.22);wDark.add(dkA);dkA.visible=false;wDark.userData={aura:dkA};
+let dkK=0; // 0 = pose serang, 1 = pose santai (pedang diseret di samping, ujung miring ke belakang dekat tanah)
 const WMODELS={greatblade:wGreat,energy:wEnergy,katana:wKat,flame:wFlame,frost:wFrost,darkblade:wDark},tipV=new THREE.Vector3();
 const tipOf=(g,y)=>{tipV.set(0,y,0);g.localToWorld(tipV);return tipV};
 function weaponFx(t,P,dt){
@@ -1589,6 +1590,7 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
  }
  swL.visible=dualOn;
  if(G.awk){const e=Math.min(1,G.awk.t/.45);aR=-.7-1.95*e+Math.sin(t*45)*.05;aL=-.7-1.75*e+Math.sin(t*47)*.05;spin=0}
+ if(selectedWeapon==='darkblade'){const rest=!(P.swing>0)&&!(P.dashT>0)&&!G.awk;dkK+=((rest?1:0)-dkK)*.18;aR=aR*(1-dkK)+(-.1-w*.12)*dkK;wDark.rotation.x=HOLD+1.2*dkK}
  pl.rig.armL.rotation.x=aL;pl.rig.armR.rotation.x=aR;
  pl.rig.body.rotation.y=spin+(P.moving?Math.sin(t*7)*.035:0);
  pl.rig.body.position.y=P.moving?Math.abs(Math.sin(t*15))*.075:Math.sin(t*2)*.018;
