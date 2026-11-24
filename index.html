@@ -1590,11 +1590,12 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
  }
  swL.visible=dualOn;
  if(G.awk){const e=Math.min(1,G.awk.t/.45);aR=-.7-1.95*e+Math.sin(t*45)*.05;aL=-.7-1.75*e+Math.sin(t*47)*.05;spin=0}
- if(selectedWeapon==='darkblade'){const rest=!(P.swing>0)&&!(P.dashT>0)&&!G.awk;dkK+=((rest?1:0)-dkK)*.18;aR=aR*(1-dkK)+(-.1-w*.12)*dkK;wDark.rotation.x=HOLD+1.2*dkK}
+ if(selectedWeapon==='darkblade'){const rest=!(P.swing>0)&&!(P.dashT>0)&&!G.awk;dkK+=((rest?1:0)-dkK)*.18;aR=aR*(1-dkK)+(.55-w*.1)*dkK;aL=aL*(1-dkK)+(.3-w*.3)*dkK;wDark.rotation.x=HOLD+.35*dkK}
  pl.rig.armL.rotation.x=aL;pl.rig.armR.rotation.x=aR;
  pl.rig.body.rotation.y=spin+(P.moving?Math.sin(t*7)*.035:0);
  pl.rig.body.position.y=P.moving?Math.abs(Math.sin(t*15))*.075:Math.sin(t*2)*.018;
  pl.rig.body.rotation.x=P.dashT>0?1.15:(P.swing>0?.45*Math.sin(Math.PI*Math.min(1,Math.max(0,1-P.swing/.25))):0);
+ if(selectedWeapon==='darkblade'&&dkK>.001)pl.rig.body.rotation.x+=.3*dkK; // badan condong ke depan: membawa pedang berat
  superFxPose(t);cutPose(t);
  pm.shirt.color.set(currentCharacter().color).lerp(pRed,Math.max(0,P.hurt)/.3);
   sw.scale.set(fused?1.55:selectedWeapon==='greatblade'?1.35:selectedWeapon==='energy'?1.08:1,fused?1.4:selectedWeapon==='greatblade'?1.18:1,fused?1.5:1);
