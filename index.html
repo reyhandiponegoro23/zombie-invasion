@@ -206,6 +206,7 @@ textarea.ain{resize:none;font:600 12px monospace}
 #awkFlash{position:fixed;inset:0;z-index:41;pointer-events:none;background:radial-gradient(circle,#fff 35%,var(--ac));opacity:0;--ac:#c084fc}
 #awkFlash.go{animation:awkflash .65s ease-out}
 @keyframes awkflash{0%{opacity:1}100%{opacity:0}}
+.logo-mini{width:34px;height:34px;border-radius:9px;vertical-align:middle;margin-right:10px;filter:drop-shadow(0 0 8px #a24dff)}
 /* --- anti kepotong di HP: panel bisa di-scroll, aman dari poni/notch, tinggi dinamis --- */
 .panel{overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;place-items:start center;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
 .panel>.card,.panel>.hub{margin:auto}
@@ -247,7 +248,7 @@ textarea.ain{resize:none;font:600 12px monospace}
 <div id="cutTitle"><small>LEVEL BARU TERBUKA</small><b>Pulau Terdampar</b><span></span></div>
 <div class="panel" id="menu"><div class="card">
   <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap"><button class="sm" id="langMenu" data-lang></button><button class="sm" id="accChip"></button></div>
-  <div class="lobby-kicker">ARENA SURVIVAL</div>
+  <div class="lobby-kicker"><img class="logo-mini" src="icon-192.png" alt="" width="34" height="34">ARENA SURVIVAL</div>
   <h1>ZOMBIE<span>INVASION</span></h1>
   <div class="weapon-picker" aria-label="Pilih senjata">
     <button class="weapon-arrow" id="weaponPrev" aria-label="Senjata sebelumnya">‹</button>
