@@ -558,6 +558,14 @@ function hitZombie(z,dmg,kb,sx,sz,stun,quiet){
  if(!quiet&&!(P.fuse>0))P.sup=Math.min(100,P.sup+SUP_HIT*P.sg*DIFF[CFG.diff].sup);P.hp=Math.min(P.maxHp,P.hp+dmg*P.ls);
  if(z.hp<=0){z.dead=true;z.dying=z.type==='boss'?.8:.35;G.kills++;killCoin(z);if(z.type==='boss')for(const o of alive()){o.dead=true;o.dying=.35;G.kills++;killCoin(o)}}
 }
+// Dark Blade slash 3: hentakan ke tanah di depan (dipicu saat pedang menyentuh tanah)
+function dkSlamHit(P){
+ const fx=Math.sin(P.ry),fz=Math.cos(P.ry),cx=P.x+fx*2.6,cz=P.z+fz*2.6;let hit=0;
+ for(const z of alive())if(Math.hypot(z.x-cx,z.z-cz)<3.8*P.rg+ZDEF[z.type].scale*.4){hitZombie(z,44*P.dm*currentWeapon().damage,12,cx,cz,1);hit++;weaponProc(z,P)}
+ pushFx(cx,cz,5.2,'#b04dff');pushFx(cx,cz,2.8,'#ffffff');pushSlash(cx,cz,P.ry,3,1.7);
+ burst(cx,.3,cz,46,['#b04dff','#7a2cff','#1b1030','#ffffff'],7,6,.3,.8,8);
+ G.shake=Math.max(G.shake,hit?1.2:.8);AU.play('big');
+}
 function hurtPlayer(dmg,fx,fz){
  const P=G.P;if(P.inv>0)return;
  P.hp-=dmg;P.inv=.7;P.hurt=.3;if(!(P.fuse>0))P.sup=Math.min(100,P.sup+SUP_HURT*P.sg*DIFF[CFG.diff].sup);
@@ -572,6 +580,7 @@ function update(dtRaw){
  if(G.cut){cutTick(Math.min(dtRaw,.05));return}
  const dt=Math.min(dtRaw,.05),P=G.P;G.time+=dt;
  superFxTick(dt);
+ if(P.dkSlam>0){P.dkSlam-=dt;if(P.dkSlam<=0)dkSlamHit(P)}
  P.atkCd-=dt;P.comboT-=dt;P.dashT-=dt;P.dashCd-=dt;P.spCd-=dt;P.inv-=dt;P.hurt-=dt;P.swing-=dt;
  if(P.fuse>0){P.fuse-=dt;P.sup=0;if(P.fuse<=0){P.fuse=0;pushFx(P.x,P.z,5,'#c084fc');toast('Bilah kembali menjadi dua')}}
  G.shake=Math.max(0,G.shake-dt*2.5);G.toast.t-=dt;
@@ -604,9 +613,9 @@ function update(dtRaw){
  if((G.attackHeld||G.req.attack)&&P.atkCd<=0&&P.dashT<=0&&!P.jump&&!P.aiming){
   const t=near(5);if(t)P.ry=Math.atan2(t.x-P.x,t.z-P.z);
   P.combo=P.comboT>0?(P.combo%3)+1:1;const c=P.combo;
-  P.comboT=.9;P.atkCd=(c===3?.55:.27)*currentWeapon().speed;P.swing=.25;pushSlash(P.x,P.z,P.ry,c,1);const twoHead=selectedWeapon==='dual'&&P.fuse>0;if(twoHead)pushSlash(P.x,P.z,P.ry+Math.PI,c,1);
-  const fx=Math.sin(P.ry),fz=Math.cos(P.ry);P.kx+=fx*4.5;P.kz+=fz*4.5;let hit=0;
-  for(const z of alive()){
+  P.comboT=.9;P.atkCd=(c===3?.55:.27)*currentWeapon().speed;const dkw=selectedWeapon==='darkblade';P.swD=dkw?(c===3?.5:.3):.25;P.swing=P.swD;if(!(dkw&&c===3))pushSlash(P.x,P.z,P.ry,c,dkw?1.35:1);const twoHead=selectedWeapon==='dual'&&P.fuse>0;if(twoHead)pushSlash(P.x,P.z,P.ry+Math.PI,c,1);
+  const fx=Math.sin(P.ry),fz=Math.cos(P.ry);P.kx+=fx*4.5;P.kz+=fz*4.5;let hit=0;const dk3=dkw&&c===3;if(dk3)P.dkSlam=.36;
+  for(const z of alive()){if(dk3)break;
    const dx=z.x-P.x,dz=z.z-P.z,d=Math.hypot(dx,dz);
    if(d<2.9*P.rg*currentWeapon().range+ZDEF[z.type].scale*.4&&(c===3||d<.1||(twoHead?Math.abs(dx*fx+dz*fz)/d>.1:(dx*fx+dz*fz)/d>.1))){hitZombie(z,(c===3?26:12)*P.dm*currentWeapon().damage,c===3?8:2.5,P.x,P.z,c===3?.55:.25);hit++;weaponProc(z,P)}
   }
@@ -1531,7 +1540,7 @@ box(bm('#1b1030'),[0,1.15,0],[.32,1.8,.1],wDark);box(bm('#b04dff'),[.18,1.15,0],
 [[.2,.8],[-.2,1.15],[.2,1.5],[-.2,1.85]].forEach(([x,y])=>rot(box(bm('#7a2cff'),[x,y,0],[.12,.2,.1],wDark),x>0?-.7:.7));
 rot(box(bm('#b04dff'),[0,2.12,0],[.32,.32,.1],wDark),Math.PI/4);
 const dkA=new THREE.Mesh(BOX,addM('#9b4dff',.35));dkA.position.set(0,1.2,0);dkA.scale.set(.6,2.1,.22);wDark.add(dkA);dkA.visible=false;wDark.userData={aura:dkA};
-let dkK=0; // 0 = pose serang, 1 = pose santai (pedang diseret di samping, ujung miring ke belakang dekat tanah)
+let dkK=0,dkAtk=0,dkLean=0; // 0 = pose serang, 1 = pose santai (pedang diseret di samping, ujung miring ke belakang dekat tanah)
 const WMODELS={greatblade:wGreat,energy:wEnergy,katana:wKat,flame:wFlame,frost:wFrost,darkblade:wDark},tipV=new THREE.Vector3();
 const tipOf=(g,y)=>{tipV.set(0,y,0);g.localToWorld(tipV);return tipV};
 function weaponFx(t,P,dt){
@@ -1550,7 +1559,7 @@ function weaponFx(t,P,dt){
  else if(w==='frost'){tp=tipOf(wFrost,1.1+R()*.7);emitP(tp.x+(R()-.5)*.3,tp.y,tp.z+(R()-.5)*.3,(R()-.5)*.5,-.1,(R()-.5)*.5,.7,.07+R()*.07,ICE_C[(R()*4)|0],1.2);
   if(sg){tp=tipOf(wFrost,1.8);emitP(tp.x,tp.y,tp.z,(R()-.5)*2,R()*1.2,(R()-.5)*2,.5,.12,'#ffffff',2)}}
  else if(w==='darkblade'){tp=tipOf(wDark,.5+R()*1.6);emitP(tp.x,tp.y,tp.z,(R()-.5)*1.2,.6+R()*1.4,(R()-.5)*1.2,.7,.1+R()*.09,R()<.5?'#9b4dff':'#2a1650',-.5);
-  if(sg){tp=tipOf(wDark,2);emitP(tp.x,tp.y,tp.z,(R()-.5)*3,R()*2,(R()-.5)*3,.5,.14,'#e9c9ff',2)}}
+  if(sg)for(let k=0;k<5;k++){tp=tipOf(wDark,.9+R()*1.5);emitP(tp.x,tp.y,tp.z,(R()-.5)*.6,(R()-.3)*.8,(R()-.5)*.6,.6+R()*.3,.17+R()*.1,k%3===0?'#e9c9ff':k%3===1?'#9b4dff':'#2a1650',0)}}
  else if(w==='energy'){tp=tipOf(wEnergy,.6+R()*1.2);const a=R()*6.28;emitP(tp.x,tp.y,tp.z,Math.cos(a)*1.4,(R()-.3)*1.2,Math.sin(a)*1.4,.4,.08+R()*.06,R()<.5?'#c084fc':'#4df0ff',0)}
  else if(w==='katana'){if(sg)for(let k=0;k<2;k++){tp=tipOf(wKat,1+R()*1.2);emitP(tp.x,tp.y,tp.z,(R()-.5)*1.5,(R()-.2)*1.5,(R()-.5)*1.5,.55,.1,R()<.5?'#ff7ab8':'#ffffff',1.5)}}
  else if(w==='greatblade'){if(sg)for(let k=0;k<2;k++){tp=tipOf(wGreat,1.2+R()*.7);emitP(tp.x,tp.y,tp.z,(R()-.5)*3,R()*2,(R()-.5)*3,.45,.12,R()<.5?'#ffd23f':'#ff7a2f',4)}}
@@ -1590,12 +1599,25 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
  }
  swL.visible=dualOn;
  if(G.awk){const e=Math.min(1,G.awk.t/.45);aR=-.7-1.95*e+Math.sin(t*45)*.05;aL=-.7-1.75*e+Math.sin(t*47)*.05;spin=0}
- if(selectedWeapon==='darkblade'){const rest=!(P.swing>0)&&!(P.dashT>0)&&!G.awk;dkK+=((rest?1:0)-dkK)*.18;aR=aR*(1-dkK)+(.55-w*.1)*dkK;aL=aL*(1-dkK)+(.3-w*.3)*dkK;wDark.rotation.x=HOLD+.35*dkK}
+ if(selectedWeapon==='darkblade'){
+  const dk=P.dashT>0||G.awk?0:1,sw=P.swing>0?1:0,c=P.combo,L=(a,b,k)=>a+(b-a)*k,E=k=>k*k*(3-2*k);
+  dkAtk+=((sw&&dk?1:0)-dkAtk)*(sw?.45:.14);dkK+=((dk?1:0)-dkK)*.18;
+  let tR=.8-w*.08,tL=.25-w*.3,tilt=.323,tw=-.45,ln=0;
+  if(sw&&dk){
+   const p=Math.min(1,Math.max(0,1-P.swing/(P.swD||.25)));let aR2,aL2,tl2,tw2,ln2;
+   if(c===3){
+    if(p<.4){const k=E(p/.4);aR2=L(.8,-2.95,k);aL2=L(.25,-1.2,k);tl2=L(.323,.1,k);tw2=L(-.45,-.25,k);ln2=L(0,-.15,k)}
+    else{const k=Math.pow(Math.min(1,(p-.4)/.6),2);aR2=L(-2.95,-1.3,k);aL2=L(-1.2,-.5,k);tl2=L(.1,-.41,k);tw2=-.25;ln2=L(-.15,.5,k)}
+   }else{const k=E(p);aR2=-1.45;aL2=.3;tl2=0;tw2=c===1?L(-1.15,1.0,k):L(1.0,-1.15,k);ln2=.1}
+   tR=L(tR,aR2,dkAtk);tL=L(tL,aL2,dkAtk);tilt=L(tilt,tl2,dkAtk);tw=L(tw,tw2,dkAtk);ln=L(ln,ln2,dkAtk)
+  }else if(dkAtk>.01){tR=L(tR,-1.4,dkAtk);tL=L(tL,.3,dkAtk);tilt=L(tilt,0,dkAtk);tw=L(tw,0,dkAtk);ln=L(0,.1,dkAtk)}
+  aR=L(aR,tR,dkK);aL=L(aL,tL,dkK);spin=L(spin,tw,dkK);dkLean=ln*dkK;wDark.rotation.x=HOLD+L(0,tilt,dkK)
+ }else{dkLean=0}
  pl.rig.armL.rotation.x=aL;pl.rig.armR.rotation.x=aR;
  pl.rig.body.rotation.y=spin+(P.moving?Math.sin(t*7)*.035:0);
  pl.rig.body.position.y=P.moving?Math.abs(Math.sin(t*15))*.075:Math.sin(t*2)*.018;
  pl.rig.body.rotation.x=P.dashT>0?1.15:(P.swing>0?.45*Math.sin(Math.PI*Math.min(1,Math.max(0,1-P.swing/.25))):0);
- if(selectedWeapon==='darkblade'&&dkK>.001)pl.rig.body.rotation.x+=.3*dkK; // badan condong ke depan: membawa pedang berat
+ if(selectedWeapon==='darkblade'&&dkK>.001&&!(P.dashT>0)){const B=pl.rig.body;B.rotation.x=dkLean;B.position.y+=.7*(1-Math.cos(dkLean));B.position.z=-.7*Math.sin(dkLean);pl.rig.legL.rotation.x-=dkLean;pl.rig.legR.rotation.x-=dkLean}else pl.rig.body.position.z=0;
  superFxPose(t);cutPose(t);
  pm.shirt.color.set(currentCharacter().color).lerp(pRed,Math.max(0,P.hurt)/.3);
   sw.scale.set(fused?1.55:selectedWeapon==='greatblade'?1.35:selectedWeapon==='energy'?1.08:1,fused?1.4:selectedWeapon==='greatblade'?1.18:1,fused?1.5:1);
