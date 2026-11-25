@@ -603,7 +603,8 @@ function hurtPlayer(dmg,fx,fz,who){
 function update(dtRaw){
  if(G.phase==='lobby'){lobbyUpdate(Math.min(dtRaw,.05));return}
  if(G.phase!=='play')return;
- if(G.awk){awakenTick(Math.min(dtRaw,.05));return}   // waktu berhenti selama cutscene
+ if(G.awk){awakenTick(Math.min(dtRaw,.05));if(NET.role==='off')return}   // co-op: dunia tetap jalan, animasi hanya untuk pemakai super
+   // waktu berhenti selama cutscene
  if(G.cut){cutTick(Math.min(dtRaw,.05));return}
  if(NET.role==='guest'){guestTick(Math.min(dtRaw,.05));return}
  const dt=Math.min(dtRaw,.05),P=G.P;G.time+=dt;
@@ -616,8 +617,8 @@ function update(dtRaw){
  let mx=(k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0)+G.joy.x;
  let mz=(k.KeyS||k.ArrowDown?1:0)-(k.KeyW||k.ArrowUp?1:0)+G.joy.z;
  const ml=Math.hypot(mx,mz);if(ml>1){mx/=ml;mz/=ml}
- if(P.down){mx=mz=0;G.req.attack=G.req.dash=G.req.special=G.req.super=false;G.attackHeld=false}
- P.moving=ml>.15&&!P.down;const sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw),ox=mx;mx=ox*cy+mz*sy;mz=-ox*sy+mz*cy;
+ if(P.down||G.awk){mx=mz=0;G.req.attack=G.req.dash=G.req.special=G.req.super=false;G.attackHeld=false}
+ P.moving=ml>.15&&!P.down&&!G.awk;const sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw),ox=mx;mx=ox*cy+mz*sy;mz=-ox*sy+mz*cy;
  const near=r=>{let b=null,bd=r;for(const z of alive()){const d=Math.hypot(z.x-P.x,z.z-P.z);if(d<bd){bd=d;b=z}}return b};
  if(G.req.dash&&!P.jump&&!P.aiming){
   const l=Math.hypot(mx,mz);
@@ -2217,7 +2218,7 @@ joy.addEventListener('pointerup',jend);joy.addEventListener('pointercancel',jend
 const AWK_DUR=1.45;
 function startAwaken(P){
  const w=currentWeapon(),col=w.color||'#c084fc';
- G.awk={t:0,dur:AWK_DUR,col,name:SUPERS[selectedWeapon].name,rings:0};
+ G.awk={t:0,dur:AWK_DUR,col,name:SUPERS[selectedWeapon].name,rings:0};if(NET.role!=='off')P.inv=Math.max(P.inv,AWK_DUR+.6);
  G.req.super=G.req.attack=G.req.dash=G.req.special=false;G.attackHeld=false;P.kx=P.kz=0;P.aiming=false;
  const ov=$('awk');ov.style.setProperty('--ac',col);$('awkName').textContent=G.awk.name.toUpperCase();
  ov.classList.remove('on');void ov.offsetWidth;ov.classList.add('on');
