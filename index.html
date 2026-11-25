@@ -572,9 +572,10 @@ function startRun(){
  G.texts.forEach(t=>t.active=false);G.fx.forEach(f=>f.active=false);G.beams.forEach(b=>b.active=false);G.awk=null;G.sfx=null;$('awk').classList.remove('on');
  G.req={attack:false,dash:false,special:false,super:false};
  spawnRoom();G.camSnap=true;setPhase('play');toast('Wave 1 — kalahkan semua zombie!');
- if(CFG.mode==='level'&&CFG.level===1&&NET.role==='off')startIntro();
+ if(CFG.mode==='level'&&CFG.level===1&&NET.role==='off'&&!SAVE.introSeen){SAVE.introSeen=1;save();startIntro()}
 }
-function togglePause(){if(G.phase==='play')setPhase('pause');else if(G.phase==='pause')setPhase('play')}
+function togglePause(){if(NET.role!=='off'&&(G.phase==='play')){const pz=$('pause');pz.style.display=pz.style.display==='grid'?'none':'grid';return}
+ if(G.phase==='play')setPhase('pause');else if(G.phase==='pause')setPhase('play')}
 const alive=()=>G.zombies.filter(z=>z.active&&!z.dead);
 function hitZombie(z,dmg,kb,sx,sz,stun,quiet){
  if(NET.vis)return;
@@ -1732,6 +1733,7 @@ const clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 function closePanels(){lobbyBusy=false;syncLock(true);$('shopP').style.display='none';$('missionP').style.display='none';$('abilityP').style.display='none';if(G.phase==='lobby')renderLobby()}
 // ===== CO-OP ONLINE (beta) — PeerJS, host-authoritative: host menjalankan zombie & bos, tamu mengirim posisi + serangan =====
 const NET_COLS=['#3fa7ff','#ff6b6b','#ffd23f','#6bff9a'],NET_CH='ABCDEFGHJKMNPQRSTUVWXYZ23456789',ZT=Object.keys(ZDEF);
+const NET_ICE={config:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:'stun:global.stun.twilio.com:3478'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
 const netSend=(c,o)=>{try{if(c&&c.open)c.send(o)}catch(e){}};
 function netBc0(){}
 function netBc(o){if(NET.role!=='host')return;for(const p of NET.players.values())netSend(p.conn,o)}
@@ -1937,7 +1939,7 @@ function netLeave(){
 function netHost(){
  netLeave();NET.status='Menyiapkan room…';netUi();NET.hostName=netName();
  netLoadLib(()=>{
-  const mk=()=>{const code=Array.from({length:5},()=>NET_CH[Math.floor(Math.random()*NET_CH.length)]).join(''),peer=new Peer('zinv-'+code);NET.peer=peer;
+  const mk=()=>{const code=Array.from({length:5},()=>NET_CH[Math.floor(Math.random()*NET_CH.length)]).join(''),peer=new Peer('zinv-'+code,NET_ICE);NET.peer=peer;
    peer.on('open',()=>{NET.role='host';NET.code=code;NET.myId='host';NET.status='';netRoster()});
    peer.on('connection',netHostConn);
    peer.on('error',e=>{if(e&&e.type==='unavailable-id'){try{peer.destroy()}catch(x){}mk()}else{netLeave();NET.status='Gagal membuat room ('+((e&&e.type)||'error')+')';netUi()}})};
@@ -1946,7 +1948,7 @@ function netJoin(){
  const code=($('netCode').value||'').trim().toUpperCase();if(code.length<4){NET.status='Masukkan kode room.';netUi();return}
  netLeave();NET.status='Menghubungkan…';netUi();
  netLoadLib(()=>{
-  const peer=new Peer();NET.peer=peer;let done=false;
+  const peer=new Peer(undefined,NET_ICE);NET.peer=peer;let done=false;
   const fail=t=>{if(done)return;done=true;netLeave();NET.status=t;netUi()};
   const to=setTimeout(()=>fail('Room tidak ditemukan / koneksi gagal.'),12000);
   peer.on('error',e=>fail(e&&e.type==='peer-unavailable'?'Room tidak ditemukan.':'Koneksi gagal ('+((e&&e.type)||'error')+')'));
@@ -2180,7 +2182,7 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{G.keys[e.code]=false;if(e.code==='KeyR')G.spHeld=false});
 addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button===0&&G.phase==='play'&&!e.target.closest('button,#joy')){G.attackHeld=true;G.req.attack=true}});
 addEventListener('pointerup',e=>{if(e.pointerType==='mouse')G.attackHeld=false});
-addEventListener('blur',()=>{G.attackHeld=false;if(G.phase==='play')setPhase('pause')});
+addEventListener('blur',()=>{G.attackHeld=false;if(G.phase==='play'&&NET.role==='off')setPhase('pause')});
 addEventListener('contextmenu',e=>e.preventDefault());
 const drags=new Map();
 addEventListener('pointerdown',e=>{
