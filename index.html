@@ -207,6 +207,7 @@ textarea.ain{resize:none;font:600 12px monospace}
 #awkFlash.go{animation:awkflash .65s ease-out}
 @keyframes awkflash{0%{opacity:1}100%{opacity:0}}
 .logo-mini{width:34px;height:34px;border-radius:9px;vertical-align:middle;margin-right:10px;filter:drop-shadow(0 0 8px #a24dff)}
+#upg.net{background:transparent!important;pointer-events:none;align-items:start;justify-items:center;padding-top:64px}#upg.net .card{pointer-events:auto;transform:scale(.78);transform-origin:top center}
 #netP .redeem{display:flex;gap:8px;margin:10px 0 4px}#netP .redeem input{flex:1;min-width:0;text-transform:uppercase;letter-spacing:.2em;text-align:center}#netP select{width:100%;padding:10px;margin:4px 0;border-radius:10px;background:#1b1633;color:#fff;border:2px solid #3a2f6a;font:inherit}
 .netcode{text-align:center;font-size:12px;letter-spacing:.2em;color:#9aa}.netcode b{display:block;font-size:44px;letter-spacing:.3em;color:#ffd23f;text-shadow:0 0 14px #ff9d00}
 #netHud{position:fixed;left:max(10px,env(safe-area-inset-left));top:86px;z-index:5;pointer-events:none;display:flex;flex-direction:column;gap:5px;font:700 12px Arial}
@@ -510,9 +511,9 @@ function weaponProc(z,P){
  }
 }
 function offerUpgrades(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.random()-.5).slice(0,3);$('upg').querySelector('h1').textContent=boss?'Bos kalah! Pilih peningkatan':'Wave selesai! Pilih peningkatan';setPhase('upgrade');renderUpg()}
-function pick(i){const u=choices[i];u[2](G.P);G.ups.push(u[0]);bossPick=false;toast('Dipilih: '+u[0]);if(NET.role!=='off'){NET.upg=false;$('upg').style.display='none'}else setPhase('play')}
-function netOfferUpg(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.random()-.5).slice(0,3);$('upg').querySelector('h1').textContent=(boss?'Bos kalah! ':'Wave selesai! ')+'Pilih peningkatan (otomatis saat wave berikut)';renderUpg();NET.upg=true;$('upg').style.display='grid'}
-function netUpgClose(){if(NET.upg&&choices.length)pick(Math.floor(Math.random()*choices.length));NET.upg=false;$('upg').style.display='none'}
+function pick(i){const u=choices[i];u[2](G.P);G.ups.push(u[0]);bossPick=false;toast('Dipilih: '+u[0]);if(NET.role!=='off'){NET.upg=false;$('upg').classList.remove('net');$('upg').style.display='none'}else setPhase('play')}
+function netOfferUpg(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.random()-.5).slice(0,3);$('upg').querySelector('h1').textContent=(boss?'Bos kalah! ':'Wave selesai! ')+'Pilih peningkatan (otomatis saat wave berikut)';renderUpg();NET.upg=true;$('upg').classList.add('net');$('upg').style.display='grid'}
+function netUpgClose(){if(NET.upg&&choices.length)pick(Math.floor(Math.random()*choices.length));NET.upg=false;$('upg').classList.remove('net');$('upg').style.display='none'}
 const NET={upg:false,suWait:0,atk:null,vis:false,vp:[],role:'off',peer:null,conn:null,players:new Map(),roster:[],others:new Map(),code:'',myId:'',slot:0,snapT:0,stT:0,starting:false,avatars:new Map(),hudT:0,status:''};
 const toast=t=>{G.toast.text=t;G.toast.t=2.4;if(NET.role==='host')netBc({t:'toast',m:t})};
 // Infinity: tiap zombie yang dikalahkan langsung memberi 50 koin
@@ -606,7 +607,7 @@ function update(dtRaw){
  if(G.awk){awakenTick(Math.min(dtRaw,.05));if(NET.role==='off')return}   // co-op: dunia tetap jalan, animasi hanya untuk pemakai super
    // waktu berhenti selama cutscene
  if(G.cut){cutTick(Math.min(dtRaw,.05));return}
- if(NET.role==='guest'){guestTick(Math.min(dtRaw,.05));return}
+ if(NET.role==='guest'){try{guestTick(Math.min(dtRaw,.05))}catch(e){console.error('guestTick',e)}return}
  const dt=Math.min(dtRaw,.05),P=G.P;G.time+=dt;
  superFxTick(dt);
  if(P.dkSlam>0){P.dkSlam-=dt;if(P.dkSlam<=0)dkSlamHit(P)}
@@ -686,7 +687,7 @@ function update(dtRaw){
  for(const g of G.ghosts)if(g.active){g.t+=dt;if(g.t>.4)g.active=false}
  for(const b of G.bolts)if(b.active){b.t+=dt;if(b.t>.35)b.active=false}
  for(const b of G.beams)if(b.active){b.t+=dt;if(b.t>.45)b.active=false}
- if(NET.role==='host')netHostTick(dt);
+ if(NET.role==='host'){try{netHostTick(dt)}catch(e){console.error('netHostTick',e)}}
  if(!G.cut&&!G.cleared&&NET.role==='off'&&CFG.mode==='level'&&CFG.level===10&&G.room+1>=LEVEL_WAVES[9]&&al.length<=1){startPushCut(P,al[0]);return}
  if(!G.cleared&&al.length===0&&G.zombies.every(z=>!z.active||z.dead)){
   G.cleared=true;G.waveBreak=7;
@@ -1610,7 +1611,7 @@ function hitBurstFx(z){
  else if(selectedWeapon==='darkblade')burst(z.x,y,z.z,10,['#b04dff','#7a2cff','#1b1030','#ffffff'],3.6,2.6,.17*sc,.55,5);
  else burst(z.x,y,z.z,4,[currentWeapon().color,'#ffffff'],3,2,.12*sc,.35,6);
 }
-function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t;netRender(t,rdt);lobbyAnim(t);
+function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t;try{netRender(t,rdt)}catch(e){console.error('netRender',e)}lobbyAnim(t);
  if(lastRoom!==G.room)applyTheme();
  const P=G.P;
  pl.g.position.set(P.x,P.y||0,P.z);pLight.position.set(P.x,3.5,P.z);pl.g.rotation.y=lerpAng(pl.g.rotation.y,P.ry,.35);
