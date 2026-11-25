@@ -2523,10 +2523,14 @@ const I18N=(()=>{
  return{tr,set,get:()=>lang,apply,DICT:D};
 })();
 // loop
+let errEl=null,errN=0;
+function errShow(n,e){errN++;if(errN>40)return;try{console.error(n,e);if(!errEl){errEl=document.createElement('div');errEl.style.cssText='position:fixed;left:0;right:0;top:0;z-index:99;background:#b00020;color:#fff;font:11px monospace;padding:3px 6px;pointer-events:none;white-space:pre-wrap';document.body.appendChild(errEl)}const st=String(e&&e.stack||'').split('\n').slice(0,3).join(' | ');errEl.textContent='ERR '+n+': '+(e&&e.message||e)+' '+st.slice(0,220)}catch(x){}}
+addEventListener('error',ev=>errShow('global',ev.error||ev.message));
 let last=performance.now();
 function loop(now){
  requestAnimationFrame(loop);const dt=(now-last)/1000;last=now;
- update(dt);camUpdate(Math.min(dt,.05));hubPose(now/1000);render(now/1000);pUpdate(Math.min(.05,dt));hubRender();floatTexts();nameTag();if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera);
+ const sf=(n,f)=>{try{f()}catch(e){errShow(n,e)}};
+ sf('update',()=>update(dt));sf('cam',()=>camUpdate(Math.min(dt,.05)));sf('hubPose',()=>hubPose(now/1000));sf('render',()=>render(now/1000));sf('pUpdate',()=>pUpdate(Math.min(.05,dt)));sf('hubRender',()=>hubRender());sf('texts',()=>{floatTexts();nameTag()});sf('draw',()=>{if(G.phase!=='lobby'&&G.phase!=='menu')renderer.render(scene,camera)});
 }
 requestAnimationFrame(loop);
 })();
