@@ -514,6 +514,7 @@ function offerUpgrades(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.rand
 function pick(i){const u=choices[i];u[2](G.P);G.ups.push(u[0]);bossPick=false;toast('Dipilih: '+u[0]);if(NET.role!=='off'){NET.upg=false;$('upg').classList.remove('net');$('upg').style.display='none'}else setPhase('play')}
 function netOfferUpg(boss){bossPick=!!boss;choices=[...UP2].sort(()=>Math.random()-.5).slice(0,3);$('upg').querySelector('h1').textContent=(boss?'Bos kalah! ':'Wave selesai! ')+'Pilih peningkatan (otomatis saat wave berikut)';renderUpg();NET.upg=true;$('upg').classList.add('net');$('upg').style.display='grid'}
 function netUpgClose(){if(NET.upg&&choices.length)pick(Math.floor(Math.random()*choices.length));NET.upg=false;$('upg').classList.remove('net');$('upg').style.display='none'}
+let HL=null,dustT=0,pLeanS=0;
 const NET={upg:false,suWait:0,atk:null,vis:false,vp:[],role:'off',peer:null,conn:null,players:new Map(),roster:[],others:new Map(),code:'',myId:'',slot:0,snapT:0,stT:0,starting:false,avatars:new Map(),hudT:0,status:''};
 const toast=t=>{G.toast.text=t;G.toast.t=2.4;if(NET.role==='host')netBc({t:'toast',m:t})};
 // Infinity: tiap zombie yang dikalahkan langsung memberi 50 koin
@@ -521,7 +522,7 @@ const INF_COIN=50;
 function killCoin(z){if(CFG.mode!=='infinity')return;SAVE.coins+=INF_COIN;G.runCoins=(G.runCoins||0)+INF_COIN;pushText(z.x,2.8*ZDEF[z.type].scale,z.z,'+'+INF_COIN+' \ud83e\ude99','#ffd23f');save()}
 const pushText=(x,y,z,text,color)=>{const t=G.texts.find(s=>!s.active)||G.texts[0];Object.assign(t,{active:true,x:x+(Math.random()-.5)*.6,y,z,t:0,text,color})};
 const pushFx=(x,z,max,color)=>{const f=G.fx.find(s=>!s.active)||G.fx[0];Object.assign(f,{active:true,x,z,t:0,max,color})};
-const pushSlash=(x,z,ry,kind,sc)=>{const s=G.slashes.find(q=>!q.active)||G.slashes[0];Object.assign(s,{active:true,x,z,ry,t:0,kind,sc});if(kind!==3)try{burst(x+Math.sin(ry)*2.2*sc,1.3,z+Math.cos(ry)*2.2*sc,6,[currentWeapon().color,'#ffffff'],3,1.5,.12,.35,4)}catch(e){}};
+const pushSlash=(x,z,ry,kind,sc)=>{const s=G.slashes.find(q=>!q.active)||G.slashes[0];Object.assign(s,{active:true,x,z,ry,t:0,kind,sc});HL={x:x+Math.sin(ry)*1.6,z:z+Math.cos(ry)*1.6,t:0,c:kind===3?'#ffd23f':currentWeapon().color,k:kind===3?1.6:1};if(kind!==3)try{burst(x+Math.sin(ry)*2.2*sc,1.3,z+Math.cos(ry)*2.2*sc,6,[currentWeapon().color,'#ffffff'],3,1.5,.12,.35,4)}catch(e){}};
 const pushGhost=(x,z,ry)=>{const g=G.ghosts.find(q=>!q.active)||G.ghosts[0];Object.assign(g,{active:true,x,z,ry,t:0})};let ghostCd=0;
 function waveList(n,bonus){
  const m=n+(bonus||0);
@@ -583,7 +584,7 @@ function hitZombie(z,dmg,kb,sx,sz,stun,quiet){
  z.vx+=dx/l*k;z.vz+=dz/l*k;z.hp-=dmg;if(quiet!==1){z.flash=1;z.stun=z.type==='boss'?0:stun;if(z.type!=='boss')z.wind=0}
  pushText(z.x,2.2*ZDEF[z.type].scale,z.z,String(Math.round(dmg)),dmg>=20?'#ffd23f':'#ffffff');
  if(!quiet&&!(P.fuse>0))P.sup=Math.min(100,P.sup+SUP_HIT*P.sg*DIFF[CFG.diff].sup*((NET.atk?NET.atk.wp:selectedWeapon)==='darkblade'?2.5:1));P.hp=Math.min(P.maxHp,P.hp+dmg*P.ls);
- if(z.hp<=0){z.dead=true;z.dying=z.type==='boss'?.8:.35;G.kills++;killCoin(z);if(z.type==='boss')for(const o of alive()){o.dead=true;o.dying=.35;G.kills++;killCoin(o)}}
+ if(z.hp<=0){z.dead=true;z.dying=z.type==='boss'?.8:.35;if(NET.role==='off'&&(z.type==='boss'||z.type==='tank'||z.type==='brute'))G.stop=z.type==='boss'?.1:.055;G.kills++;killCoin(z);if(z.type==='boss')for(const o of alive()){o.dead=true;o.dying=.35;G.kills++;killCoin(o)}}
 }
 // Dark Blade slash 3: hentakan ke tanah di depan (dipicu saat pedang menyentuh tanah)
 function dkSlamHit(P){
@@ -609,6 +610,7 @@ function update(dtRaw){
    // waktu berhenti selama cutscene
  if(G.cut){cutTick(Math.min(dtRaw,.05));return}
  if(NET.role==='guest'){try{guestTick(Math.min(dtRaw,.05))}catch(e){console.error('guestTick',e)}return}
+ if(G.stop>0&&NET.role==='off'&&G.phase==='play'){G.stop-=dtRaw;return}
  const dt=Math.min(dtRaw,.05),P=G.P;G.time+=dt;
  superFxTick(dt);
  if(P.dkSlam>0){P.dkSlam-=dt;if(P.dkSlam<=0)dkSlamHit(P)}
@@ -720,7 +722,7 @@ renderer.toneMappingExposure=0.92;
 document.body.prepend(renderer.domElement);
 const scene=new THREE.Scene();scene.background=new THREE.Color('#0a1740');scene.fog=new THREE.Fog('#07112f',48,145);
 const camera=new THREE.PerspectiveCamera(64,1,.5,210);camera.position.set(0,14,16);
-scene.add(new THREE.HemisphereLight(0xdce7ff,0x4c527b,.82));scene.add(new THREE.AmbientLight(0xbacbff,.34));const pLight=new THREE.PointLight(0xfff3d0,1.05,22);scene.add(pLight);
+scene.add(new THREE.HemisphereLight(0xdce7ff,0x4c527b,.82));scene.add(new THREE.AmbientLight(0xbacbff,.34));const pLight=new THREE.PointLight(0xfff3d0,1.05,22);scene.add(pLight);const hitL=new THREE.PointLight(0xffffff,0,15);scene.add(hitL);
 const dl=new THREE.DirectionalLight(0xe6edff,.68);
 dl.position.set(6,16,8);dl.castShadow=true;
 dl.shadow.mapSize.set(1024,1024);
@@ -1653,11 +1655,13 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
   }else if(dkAtk>.01){tR=L(tR,-1.4,dkAtk);tL=L(tL,.3,dkAtk);tilt=L(tilt,0,dkAtk);tw=L(tw,0,dkAtk);ln=L(0,.1,dkAtk)}
   aR=L(aR,tR,dkK);aL=L(aL,tL,dkK);spin=L(spin,tw,dkK);dkLean=ln*dkK;wDark.rotation.x=HOLD+L(0,tilt,dkK)
  }else{dkLean=0}
+ if(P.swing<=0&&!G.awk&&P.dashT<=0){const br=Math.sin(t*2)*.035;aL+=br;aR-=br}
  pl.rig.armL.rotation.x=aL;pl.rig.armR.rotation.x=aR;bendArms(pl.rig,rdt);
  pl.rig.body.rotation.y=spin+(P.moving?Math.sin(t*7)*.035:0);
  pl.rig.body.position.y=P.moving?Math.abs(Math.sin(t*15))*.075:Math.sin(t*2)*.018;
  pl.rig.body.rotation.x=P.dashT>0?1.15:(P.swing>0?.45*Math.sin(Math.PI*Math.min(1,Math.max(0,1-P.swing/.25))):0);
  if(selectedWeapon==='darkblade'&&dkK>.001&&!(P.dashT>0)){const B=pl.rig.body;B.rotation.x=dkLean;B.position.y+=.7*(1-Math.cos(dkLean));B.position.z=-.7*Math.sin(dkLean);pl.rig.legL.rotation.x-=dkLean;pl.rig.legR.rotation.x-=dkLean}else pl.rig.body.position.z=0;
+ pLeanS+=((P.moving&&P.dashT<=0&&selectedWeapon!=='darkblade'?.1:0)-pLeanS)*Math.min(1,rdt*8);pl.rig.body.rotation.x+=pLeanS;pl.rig.body.rotation.z=P.moving&&P.dashT<=0?Math.sin(t*15)*.04:0;
  superFxPose(t);cutPose(t);
  pm.shirt.color.set(currentCharacter().color).lerp(pRed,Math.max(0,P.hurt)/.3);
   sw.scale.set(fused?1.55:selectedWeapon==='greatblade'?1.35:selectedWeapon==='energy'?1.08:1,fused?1.4:selectedWeapon==='greatblade'?1.18:1,fused?1.5:1);
@@ -1670,6 +1674,8 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
   sw.userData.glow.intensity=(isDual||fused)?(fused?2.6:1.8):0;swL.userData.glow.intensity=isDual?1.8:0;
  pl.g.visible=cam.dist>1.85&&!(P.inv>0&&P.dashT<=0&&Math.floor(t*20)%2===0);
  weaponFx(t,P,rdt);dropAnim(t);
+ dustT-=rdt;if(dustT<=0&&(P.moving||P.dashT>0)&&!P.jump&&!G.cut&&G.phase==='play'){dustT=P.dashT>0?.035:.15;try{emitP(P.x+(Math.random()-.5)*.5,.12,P.z+(Math.random()-.5)*.5,(Math.random()-.5)*.9,.8+Math.random()*.6,(Math.random()-.5)*.9,.38,.17,'#9a96b8',2)}catch(e){}}
+ if(HL){HL.t+=rdt;const k=Math.max(0,1-HL.t/.2);hitL.position.set(HL.x,1.7,HL.z);hitL.color.set(HL.c);hitL.intensity=3.2*HL.k*k;if(k<=0){HL=null;hitL.intensity=0}}
  zs.forEach((o,i)=>{
   const z=G.zombies[i];if(!z.active){o.g.visible=false;o.wasF=false;return}
   const d=ZDEF[z.type];o.g.visible=true;o.crown.visible=z.type==='boss';if(z.type==='boss'&&o.crown.material)o.crown.material.color.set(BOSSES[z.bi||0].crown);
@@ -1679,7 +1685,7 @@ function render(t){const rdt=Math.min(.05,Math.max(0,t-renderLast));renderLast=t
   if(z.freeze>0){o.m.skin.color.lerp(ICE,.7);o.m.shirt.color.lerp(ICE,.6)}else if(z.burn>0){const q=.45+.2*Math.sin(t*14);o.m.skin.color.lerp(FIRE,q);o.m.shirt.color.lerp(FIRE,q)}
   const ww=Math.sin(z.walk*3)*.6;o.rig.legL.rotation.x=ww;o.rig.legR.rotation.x=-ww;
   o.rig.armL.rotation.x=o.rig.armR.rotation.x=z.wind>0?-2.7:-1.45+Math.sin(z.walk*3)*.12;bendArms(o.rig,rdt);
-  o.rig.body.rotation.x=z.wind>0?-.25:0;
+  {const dk=z.dead?1-Math.min(1,Math.max(0,z.dying/.35)):0,B=o.rig.body;B.rotation.x=(z.wind>0?-.25:.08)-dk*1.35;B.rotation.z=Math.sin(z.walk*1.5)*.07;B.position.y=Math.abs(Math.sin(z.walk*3))*.05-dk*.25}
   o.bar.visible=!z.dead&&z.hp<z.maxHp;const f=Math.max(.001,z.hp/z.maxHp);o.fill.scale.x=f;o.fill.position.x=-(1-f)*.5;
   zombieFx(o,z,i,d,t,rdt);
  });
@@ -1723,7 +1729,7 @@ function camUpdate(dt){
   if(G.awk){const e=Math.min(1,G.awk.t/.5),ee=e*e*(3-2*e);camera.position.lerp(awkV.set(P.x,2.1,P.z),.55*ee);camera.lookAt(P.x,2.15+.25*ee,P.z);camera.rotateZ(.13*ee*Math.cos(G.awk.t*2.2))}
  }
  if(G.cut)cutCam();
- {const tf=64-(G.awk?20*Math.min(1,G.awk.t/.5):0);if(Math.abs(camera.fov-tf)>.01){camera.fov=tf;camera.updateProjectionMatrix()}}
+ {const tf=64-(G.awk?20*Math.min(1,G.awk.t/.5):0)+(G.P.dashT>0?7:0);if(Math.abs(camera.fov-tf)>.01){camera.fov+=(tf-camera.fov)*(G.awk?1:.22);if(Math.abs(camera.fov-tf)<.05)camera.fov=tf;camera.updateProjectionMatrix()}}
 }
 const awkV=new THREE.Vector3();
 function floatTexts(){
