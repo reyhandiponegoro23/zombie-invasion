@@ -496,13 +496,13 @@ function rangedAtk(o,wp,c,ry,dm,rg,vis){
  const fx=Math.sin(ry),fz=Math.cos(ry),hitF=(z,d,kb,st,ax,az)=>{hitZombie(z,d,kb,ax,az,st);weaponProc(z,o)};
  if(!vis&&NET.role==='host')netBc({t:'fx',k:'sh',x:o.x,z:o.z,ry,wp,c,w:o.id||'host'});
  if(wp==='staff'){
-  if(c===3){const L=26*rg;pushPrj(o.x+fx*.8,1.9,o.z+fz*.8,ry,L,'bigbolt',52);if(!vis){G.shake=Math.max(G.shake,.35);for(const z of alive()){const dx=z.x-o.x,dz=z.z-o.z,f=dx*fx+dz*fz,sd=Math.abs(dx*fz-dz*fx);if(f>.2&&f<L&&sd<1.5+ZDEF[z.type].scale*.45)hitF(z,22*dm,6,.45,o.x,o.z)}}return}
-  let t=null,bd=1e9;const reach=24*rg;for(const z of alive()){const dx=z.x-o.x,dz=z.z-o.z,d=Math.hypot(dx,dz);if(d<reach&&d>.01&&(dx*fx+dz*fz)/d>.55&&d<bd){bd=d;t=z}}
-  pushPrj(o.x+fx*.8,1.9,o.z+fz*.8,t?Math.atan2(t.x-o.x,t.z-o.z):ry,t?Math.max(1,bd-.8):reach*.8,'bolt',54);
+  if(c===3){const L=64*rg;pushPrj(o.x+fx*.8,1.9,o.z+fz*.8,ry,L,'bigbolt',85);if(!vis){G.shake=Math.max(G.shake,.35);for(const z of alive()){const dx=z.x-o.x,dz=z.z-o.z,f=dx*fx+dz*fz,sd=Math.abs(dx*fz-dz*fx);if(f>.2&&f<L&&sd<1.5+ZDEF[z.type].scale*.45)hitF(z,22*dm,6,.45,o.x,o.z)}}return}
+  let t=null,bd=1e9;const reach=60*rg;for(const z of alive()){const dx=z.x-o.x,dz=z.z-o.z,d=Math.hypot(dx,dz);if(d<reach&&d>.01&&(dx*fx+dz*fz)/d>.55&&d<bd){bd=d;t=z}}
+  pushPrj(o.x+fx*.8,1.9,o.z+fz*.8,t?Math.atan2(t.x-o.x,t.z-o.z):ry,t?Math.max(1,bd-.8):reach*.8,'bolt',85);
   if(t&&!vis){const sx=t.x,sz=t.z;hitF(t,13*dm,3,.3,o.x,o.z);pushFx(sx,sz,2.4,'#c77dff');for(const z of alive())if(z!==t&&Math.hypot(z.x-sx,z.z-sz)<2.4+ZDEF[z.type].scale*.3)hitF(z,6*dm,2,.15,sx,sz)}
   return}
- const offs=c===1?[0]:c===2?[-.2,.2]:[-.5,-.25,0,.25,.5],L=28*rg;
- for(const q of offs){const a=ry+q,gx=Math.sin(a),gz=Math.cos(a);pushPrj(o.x+gx*.8,1.5,o.z+gz*.8,a,L,c===3?'arrowG':'arrow',70);
+ const offs=c===1?[0]:c===2?[-.2,.2]:[-.5,-.25,0,.25,.5],L=64*rg;
+ for(const q of offs){const a=ry+q,gx=Math.sin(a),gz=Math.cos(a);pushPrj(o.x+gx*.8,1.5,o.z+gz*.8,a,L,c===3?'arrowG':'arrow',100);
   if(!vis)for(const z of alive()){const dx=z.x-o.x,dz=z.z-o.z,f=dx*gx+dz*gz,sd=Math.abs(dx*gz-dz*gx);if(f>.2&&f<L&&sd<.9+ZDEF[z.type].scale*.45)hitF(z,(c===3?7:10)*dm,2,.15,o.x,o.z)}}
 }
 const SUPERS={
@@ -674,7 +674,7 @@ function update(dtRaw){
  if(P.sPulses>0){P.sPulseT-=dt;P.inv=Math.max(P.inv,.2);if(P.sPulseT<=0){P.sPulseT=.17;P.sPulses--;pushFx(P.x,P.z,5.8,'#c084fc');pushSlash(P.x,P.z,P.ry+P.sPulses*2.1,3,1.9);P.swing=.3;P.combo=3;G.shake=Math.max(G.shake,.35);for(const z of alive())if(Math.hypot(z.x-P.x,z.z-P.z)<5.8+ZDEF[z.type].scale*.4)hitZombie(z,22*P.sM,4,P.x,P.z,.3,2)}}
  if(G.req.super&&P.sup>=100&&!P.jump&&!G.awk)startAwaken(P);
  if((G.attackHeld||G.req.attack)&&P.atkCd<=0&&P.dashT<=0&&!P.jump&&!P.aiming){
-  const t=near(selectedWeapon==='staff'||selectedWeapon==='bow'?24:5);if(t)P.ry=Math.atan2(t.x-P.x,t.z-P.z);
+  const t=near(selectedWeapon==='staff'||selectedWeapon==='bow'?70:5);if(t)P.ry=Math.atan2(t.x-P.x,t.z-P.z);
   P.combo=P.comboT>0?(P.combo%3)+1:1;const c=P.combo;
   P.comboT=.9;P.atkCd=(c===3?.55:.27)*currentWeapon().speed;const dkw=selectedWeapon==='darkblade',rw=selectedWeapon==='staff'||selectedWeapon==='bow';P.swD=dkw?(c===3?.5:.3):.25;P.swing=P.swD;if(!(dkw&&c===3)&&!rw)pushSlash(P.x,P.z,P.ry,c,dkw?1.35:1);if(rw)rangedAtk(P,selectedWeapon,c,P.ry,P.dm*currentWeapon().damage,P.rg*currentWeapon().range,false);const twoHead=selectedWeapon==='dual'&&P.fuse>0;if(twoHead)pushSlash(P.x,P.z,P.ry+Math.PI,c,1);
   const fx=Math.sin(P.ry),fz=Math.cos(P.ry);if(!rw){P.kx+=fx*4.5;P.kz+=fz*4.5}let hit=0;const dk3=dkw&&c===3;if(dk3)P.dkSlam=.36;
@@ -1976,7 +1976,7 @@ function guestTick(dt){
  P.moving=ml>.15&&!P.down;const sy=Math.sin(cam.yaw),cy=Math.cos(cam.yaw),ox=mx;mx=ox*cy+mz*sy;mz=-ox*sy+mz*cy;
  if(G.req.dash&&!P.down&&!P.jump&&!P.aiming){const l=Math.hypot(mx,mz);if(l>.15){P.dx=mx/l;P.dz=mz/l}else{P.dx=Math.sin(P.ry);P.dz=Math.cos(P.ry)}P.dashT=.18;P.dashCd=0;P.inv=Math.max(P.inv,.4)}
  if((G.attackHeld||G.req.attack)&&P.atkCd<=0&&P.dashT<=0&&!P.down&&!P.jump&&!P.aiming){
-  const t=nearestZ(P,selectedWeapon==='staff'||selectedWeapon==='bow'?24:5);if(t)P.ry=Math.atan2(t.x-P.x,t.z-P.z);
+  const t=nearestZ(P,selectedWeapon==='staff'||selectedWeapon==='bow'?70:5);if(t)P.ry=Math.atan2(t.x-P.x,t.z-P.z);
   P.combo=P.comboT>0?(P.combo%3)+1:1;const c=P.combo,w=currentWeapon();
   P.comboT=.9;P.atkCd=(c===3?.55:.27)*(P.fuse>0&&selectedWeapon==='dual'?FUSED:w).speed;const dkw=selectedWeapon==='darkblade',rw=selectedWeapon==='staff'||selectedWeapon==='bow';P.swD=dkw?(c===3?.5:.3):.25;P.swing=P.swD;if(!(dkw&&c===3)&&!rw)pushSlash(P.x,P.z,P.ry,c,dkw?1.35:1);if(rw)rangedAtk(P,selectedWeapon,c,P.ry,0,P.rg*w.range,true);if(selectedWeapon==='dual'&&P.fuse>0)pushSlash(P.x,P.z,P.ry+Math.PI,c,1);if(dkw&&c===3)P.dkSlam=.36;
   if(!rw){P.kx+=Math.sin(P.ry)*4.5;P.kz+=Math.cos(P.ry)*4.5}
