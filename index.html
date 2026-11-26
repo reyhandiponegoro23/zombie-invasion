@@ -635,7 +635,7 @@ function update(dtRaw){
   if(P.aiming){
    const l=Math.hypot(mx,mz);if(l>.2){P.aimX=mx/l;P.aimZ=mz/l}
    mx=mz=0;P.moving=false;
-   if(!G.spHeld){P.aiming=false;const [tx,tz]=aimTarget(P);P.ry=Math.atan2(P.aimX,P.aimZ);P.spCd=SP.cd*P.cd;P.jump={t:0,dur:.5,sx:P.x,sz:P.z,tx,tz};P.swing=.3;P.combo=3}
+   if(!G.spHeld||(P.aimT=(P.aimT||0)+dt)>3){P.aimT=0;G.spHeld=false;P.aiming=false;const [tx,tz]=aimTarget(P);P.ry=Math.atan2(P.aimX,P.aimZ);P.spCd=SP.cd*P.cd;P.jump={t:0,dur:.5,sx:P.x,sz:P.z,tx,tz};P.swing=.3;P.combo=3}
   }
  }else if(G.req.special&&P.spCd<=0){
   P.spCd=SP.cd*P.cd;P.swing=.3;P.combo=3;SP.run(P);if(NET.role==='host')netBc({t:'fx',k:'sp',id:SP.id,w:'host',x:P.x,z:P.z,ry:P.ry});
@@ -1900,7 +1900,7 @@ function guestTick(dt){
  if(SP.aim){
   if(G.req.special&&P.spCd<=0&&!P.aiming&&!P.jump&&!P.down){P.aiming=true;P.aimX=Math.sin(P.ry);P.aimZ=Math.cos(P.ry)}
   if(P.aiming){const l=Math.hypot(mx,mz);if(l>.2){P.aimX=mx/l;P.aimZ=mz/l}mx=mz=0;P.moving=false;
-   if(!G.spHeld){P.aiming=false;const [tx,tz]=aimTarget(P);P.ry=Math.atan2(P.aimX,P.aimZ);P.spCd=SP.cd*P.cd;P.jump={t:0,dur:.5,sx:P.x,sz:P.z,tx,tz};P.swing=.3;P.combo=3}}
+   if(!G.spHeld||(P.aimT=(P.aimT||0)+dt)>3){P.aimT=0;G.spHeld=false;P.aiming=false;const [tx,tz]=aimTarget(P);P.ry=Math.atan2(P.aimX,P.aimZ);P.spCd=SP.cd*P.cd;P.jump={t:0,dur:.5,sx:P.x,sz:P.z,tx,tz};P.swing=.3;P.combo=3}}
  }else if(G.req.special&&P.spCd<=0&&!P.down){P.spCd=SP.cd*P.cd;P.swing=.3;P.combo=3;netSend(NET.conn,{t:'sp',id:SP.id,dm:+P.dm.toFixed(2),sd:+P.sd.toFixed(2)})}
  if(P.jump){const J=P.jump;J.t+=dt;const u=Math.min(1,J.t/J.dur);P.x=J.sx+(J.tx-J.sx)*u;P.z=J.sz+(J.tz-J.sz)*u;P.y=Math.sin(Math.PI*u)*3.6;P.inv=Math.max(P.inv,.2);mx=mz=0;P.moving=false;if(u>=1){P.jump=null;P.y=0;netSend(NET.conn,{t:'sp',id:'slam',dm:+P.dm.toFixed(2),sd:+P.sd.toFixed(2),x:+P.x.toFixed(2),z:+P.z.toFixed(2)})}}
  if(G.req.super&&P.sup>=100&&!P.down&&!P.jump&&NET.suWait<=0){
@@ -2203,7 +2203,8 @@ addEventListener('keydown',e=>{
 addEventListener('keyup',e=>{G.keys[e.code]=false;if(e.code==='KeyR')G.spHeld=false});
 addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button===0&&G.phase==='play'&&!e.target.closest('button,#joy')){clearTimeout(mT);G.attackHeld=true;G.req.attack=true}});
 let mT=0;addEventListener('pointerup',e=>{if(e.pointerType==='mouse'){clearTimeout(mT);mT=setTimeout(()=>{G.attackHeld=false},140)}});
-addEventListener('blur',()=>{G.attackHeld=false;if(G.phase==='play'&&NET.role==='off')setPhase('pause')});
+const relAll=()=>{G.attackHeld=false;G.spHeld=false;for(const k in G.keys)G.keys[k]=false};document.addEventListener('visibilitychange',relAll);['touchend','touchcancel'].forEach(n=>addEventListener(n,e=>{if(!e.touches.length)setTimeout(relAll,160)},{passive:true}));
+addEventListener('blur',()=>{G.attackHeld=false;G.spHeld=false;for(const k in G.keys)G.keys[k]=false;if(G.phase==='play'&&NET.role==='off')setPhase('pause')});
 addEventListener('contextmenu',e=>e.preventDefault());
 const drags=new Map();
 addEventListener('pointerdown',e=>{
