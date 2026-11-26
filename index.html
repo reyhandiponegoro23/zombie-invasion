@@ -2201,8 +2201,8 @@ addEventListener('keydown',e=>{
  if(e.code==='Minus'||e.code==='NumpadSubtract')cam.dist=Math.min(24,cam.dist+1.5);
 });
 addEventListener('keyup',e=>{G.keys[e.code]=false;if(e.code==='KeyR')G.spHeld=false});
-addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button===0&&G.phase==='play'&&!e.target.closest('button,#joy')){G.attackHeld=true;G.req.attack=true}});
-addEventListener('pointerup',e=>{if(e.pointerType==='mouse')G.attackHeld=false});
+addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button===0&&G.phase==='play'&&!e.target.closest('button,#joy')){clearTimeout(mT);G.attackHeld=true;G.req.attack=true}});
+let mT=0;addEventListener('pointerup',e=>{if(e.pointerType==='mouse'){clearTimeout(mT);mT=setTimeout(()=>{G.attackHeld=false},140)}});
 addEventListener('blur',()=>{G.attackHeld=false;if(G.phase==='play'&&NET.role==='off')setPhase('pause')});
 addEventListener('contextmenu',e=>e.preventDefault());
 const drags=new Map();
@@ -2230,7 +2230,7 @@ addEventListener('pointermove',e=>{const d=drags.get(e.pointerId);if(!d)return;
 ['pointerup','pointercancel'].forEach(n=>addEventListener(n,e=>drags.delete(e.pointerId)));
 addEventListener('wheel',e=>{cam.dist=Math.max(1,Math.min(24,cam.dist+e.deltaY*.01))},{passive:true});
 const hold=(id,down,up)=>{const b=$(id);b.addEventListener('pointerdown',e=>{e.preventDefault();down()});if(up)['pointerup','pointercancel','pointerleave'].forEach(n=>b.addEventListener(n,up))};
-hold('bA',()=>G.attackHeld=true,()=>G.attackHeld=false);hold('bD',()=>G.req.dash=true);hold('bS',()=>{G.req.special=true;G.spHeld=true},()=>{G.spHeld=false});hold('bU',()=>G.req.super=true);
+{const bA=$('bA');let aT=0;bA.addEventListener('pointerdown',e=>{e.preventDefault();clearTimeout(aT);G.attackHeld=true;G.req.attack=true;try{bA.setPointerCapture(e.pointerId)}catch(_){}});['pointerup','pointercancel','lostpointercapture'].forEach(n=>bA.addEventListener(n,()=>{clearTimeout(aT);aT=setTimeout(()=>{G.attackHeld=false},140)}))}hold('bD',()=>G.req.dash=true);hold('bS',()=>{G.req.special=true;G.spHeld=true},()=>{G.spHeld=false});hold('bU',()=>G.req.super=true);
 const joy=$('joy'),knob=$('knob');
 const jset=e=>{const r=joy.getBoundingClientRect();let dx=(e.clientX-r.left-r.width/2)/50,dy=(e.clientY-r.top-r.height/2)/50;const l=Math.hypot(dx,dy);if(l>1){dx/=l;dy/=l}
  G.joy.x=dx;G.joy.z=dy;knob.style.transform=`translate(${dx*40}px,${dy*40}px)`};
